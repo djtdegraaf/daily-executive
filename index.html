@@ -919,6 +919,129 @@
       opacity: 0.7;
     }
 
+    /* ── FEATURED STOCK WIDGET ───────────────────────────── */
+    .featured-stock {
+      background: var(--dark-card);
+      border-radius: 4px;
+      padding: 1.4rem 1.5rem 1.2rem;
+      color: #e8dfc8;
+      margin-top: 0.5rem;
+    }
+
+    .featured-stock-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.9rem;
+    }
+
+    .featured-stock-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.63rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold-light);
+      margin-bottom: 0.3rem;
+    }
+
+    .featured-stock-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #f0ebe0;
+      line-height: 1.2;
+    }
+
+    .featured-stock-exchange {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.62rem;
+      color: #5a5040;
+      margin-top: 0.15rem;
+    }
+
+    .featured-stock-price-block {
+      text-align: right;
+    }
+
+    .featured-stock-price {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #f0ebe0;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+
+    .featured-stock-chg {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 0.2rem;
+    }
+
+    .featured-stock-period {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.6rem;
+      color: #4a4030;
+      margin-top: 0.1rem;
+    }
+
+    .chart-area {
+      position: relative;
+      height: 90px;
+      margin: 0.6rem 0;
+    }
+
+    .chart-area svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .featured-stock-stats {
+      display: flex;
+      gap: 0;
+      border-top: 1px solid #2a2418;
+      margin-top: 0.5rem;
+      padding-top: 0.6rem;
+    }
+
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      border-right: 1px solid #2a2418;
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.58rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #5a5040;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+
+    .stat-value {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #c8bfa8;
+    }
+
+    .featured-mover-reason {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.65rem;
+      color: #4a4030;
+      margin-top: 0.6rem;
+      letter-spacing: 0.03em;
+      font-style: italic;
+    }
+
     /* ── FOOTER ───────────────────────────────────────────── */
     footer {
       background: var(--black);
@@ -1079,6 +1202,16 @@
     </div>
 
     <div class="form-group">
+      <label class="form-label" for="input-twelve">
+        Twelve Data API-sleutel &nbsp;
+        <a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">Gratis registreren →</a>
+      </label>
+      <input id="input-twelve" type="password" class="form-input"
+             placeholder="Bijv. abc123def456..." autocomplete="off" />
+      <p class="form-note">Koersgrafieken (30-daagse tijdreeks) voor het uitgelichte aandeel — gratis tier: 800 req/dag</p>
+    </div>
+
+    <div class="form-group">
       <label class="form-label">CoinGecko (Bitcoin)</label>
       <p class="form-note ok">✓ Geen sleutel nodig — werkt direct</p>
     </div>
@@ -1214,6 +1347,19 @@
       </div>
 
       <!-- Quote Block -->
+      <!-- Featured Stock Widget -->
+      <div id="featured-stock-container">
+        <div class="featured-stock">
+          <div class="featured-stock-label">Aandeel van de dag</div>
+          <div style="margin-top:0.8rem">
+            <div class="shimmer market-shimmer" style="width:60%;height:14px;margin-bottom:0.5rem;"></div>
+            <div class="shimmer market-shimmer" style="width:40%;height:24px;margin-bottom:0.6rem;"></div>
+            <div class="shimmer market-shimmer" style="width:100%;height:90px;margin-bottom:0.5rem;"></div>
+            <div class="shimmer market-shimmer" style="width:100%;height:32px;"></div>
+          </div>
+        </div>
+      </div>
+
       <div id="quote-container">
         <div class="quote-block">
           <div class="quote-label">Stemming van de dag</div>
@@ -1302,12 +1448,14 @@
 
   const LS_FINNHUB = 'de_finnhub_key';
   const LS_AV      = 'de_av_key';
+  const LS_TWELVE  = 'de_twelve_key';
   const CACHE_PFX  = 'de_cache_';
 
   function getCfg() {
     return {
       finnhub: localStorage.getItem(LS_FINNHUB) || '',
       av:      localStorage.getItem(LS_AV)      || '',
+      twelve:  localStorage.getItem(LS_TWELVE)  || '',
     };
   }
 
@@ -1459,6 +1607,43 @@
 
     const result = { price: data.bitcoin.usd, changePct: data.bitcoin.usd_24h_change };
     cacheSet(ck, result, 120_000);
+    return result;
+  }
+
+  // Twelve Data: 30-daagse dagelijkse tijdreeks voor een aandeel
+  async function fetchTwelveTimeSeries(symbol, apiKey) {
+    const ck = 'twelve_ts_' + symbol.replace(/[^a-zA-Z0-9]/g, '_');
+    const hit = cacheGet(ck);
+    if (hit) return hit;
+
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31&apikey=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Twelve Data HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (data.status === 'error') throw new Error(`Twelve Data: ${data.message}`);
+    if (!data.values || data.values.length < 2) throw new Error('Onvoldoende historische data');
+
+    // values[0] = meest recent, values[n] = oudst — omkeren voor chronologisch
+    const series = data.values.reverse().map(v => ({
+      date:  v.datetime,
+      close: parseFloat(v.close),
+      high:  parseFloat(v.high),
+      low:   parseFloat(v.low),
+      open:  parseFloat(v.open),
+    }));
+
+    const result = {
+      symbol,
+      name: data.meta?.symbol || symbol,
+      currency: data.meta?.currency || 'USD',
+      exchange: data.meta?.exchange || '',
+      series,
+    };
+    // Cache tot middernacht — dagelijkse grafiek hoeft niet vaker te verversen
+    const now = new Date();
+    const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
+    cacheSet(ck, result, midnight - now);
     return result;
   }
 
@@ -1627,6 +1812,83 @@
     </article>`;
   }
 
+  // Bouwt een SVG-lijnpad van de tijdreeks; retourneert de <svg> als string
+  function buildChartSVG(series, isUp) {
+    const W = 280, H = 90;
+    const closes = series.map(p => p.close);
+    const minV = Math.min(...closes);
+    const maxV = Math.max(...closes);
+    const range = maxV - minV || 1;
+
+    const pts = closes.map((v, i) => {
+      const x = (i / (closes.length - 1)) * W;
+      const y = H - ((v - minV) / range) * (H - 8) - 4;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const polyline = pts.join(' ');
+    // Sluit het vlak af langs de onderkant voor de gradient-fill
+    const fillPath = `M${pts[0]} L${polyline.split(' ').join(' L')} L${W},${H} L0,${H} Z`;
+    const strokeColor = isUp ? '#5cb87a' : '#e05555';
+    const fillId = 'chartGrad_' + (isUp ? 'up' : 'dn');
+
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="${fillPath}" fill="url(#${fillId})" stroke="none"/>
+      <polyline points="${polyline}" fill="none" stroke="${strokeColor}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  function renderFeaturedStock(stockData, quote, reason) {
+    const series  = stockData.series;
+    const first   = series[0].close;
+    const last    = series[series.length - 1].close;
+    const chgPct  = ((last - first) / first) * 100;
+    const isUp    = chgPct >= 0;
+    const hi30    = Math.max(...series.map(p => p.high));
+    const lo30    = Math.min(...series.map(p => p.low));
+    const curr    = quote ? quote.price : last;
+    const todayPct = quote ? quote.changePct : chgPct;
+    const todayCls = todayPct >= 0 ? 'up' : 'down';
+    const todayArrow = todayPct >= 0 ? '▲' : '▼';
+    const cur = stockData.currency === 'USD' ? '$' : (stockData.currency === 'EUR' ? '€' : stockData.currency + ' ');
+
+    return `<div class="featured-stock">
+      <div class="featured-stock-header">
+        <div>
+          <div class="featured-stock-label">Aandeel van de dag</div>
+          <div class="featured-stock-name">${esc(stockData.name)}</div>
+          <div class="featured-stock-exchange">${esc(stockData.exchange)}</div>
+        </div>
+        <div class="featured-stock-price-block">
+          <div class="featured-stock-price">${cur}${fmtNum(curr, 2)}</div>
+          <div class="featured-stock-chg ${todayCls}">${todayArrow} ${fmtPct(todayPct)} vandaag</div>
+          <div class="featured-stock-period ${isUp ? 'up' : 'down'}">${fmtPct(chgPct)} afgelopen 30 dgn</div>
+        </div>
+      </div>
+      <div class="chart-area">${buildChartSVG(series, isUp)}</div>
+      <div class="featured-stock-stats">
+        <div class="stat-item">
+          <span class="stat-label">30d High</span>
+          <span class="stat-value">${cur}${fmtNum(hi30, 2)}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">30d Low</span>
+          <span class="stat-value">${cur}${fmtNum(lo30, 2)}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Beurs</span>
+          <span class="stat-value">${esc(stockData.exchange.split(' ')[0] || '–')}</span>
+        </div>
+      </div>
+      ${reason ? `<div class="featured-mover-reason">Grootste beweger vandaag · ${esc(reason)}</div>` : ''}
+    </div>`;
+  }
+
   function renderBriefingItem(article) {
     return `<li>
       <span class="bullet-icon">▸</span>
@@ -1672,6 +1934,7 @@
       const cfg = getCfg();
       document.getElementById('input-finnhub').value = cfg.finnhub;
       document.getElementById('input-av').value      = cfg.av;
+      document.getElementById('input-twelve').value  = cfg.twelve;
       document.getElementById('modal-save-msg').style.display = 'none';
       document.getElementById('api-modal').classList.remove('hidden');
     },
@@ -1681,10 +1944,12 @@
     },
 
     saveKeys() {
-      const fh = document.getElementById('input-finnhub').value.trim();
-      const av = document.getElementById('input-av').value.trim();
-      if (fh) localStorage.setItem(LS_FINNHUB, fh);
-      if (av) localStorage.setItem(LS_AV, av);
+      const fh     = document.getElementById('input-finnhub').value.trim();
+      const av     = document.getElementById('input-av').value.trim();
+      const twelve = document.getElementById('input-twelve').value.trim();
+      if (fh)     localStorage.setItem(LS_FINNHUB, fh);
+      if (av)     localStorage.setItem(LS_AV, av);
+      if (twelve) localStorage.setItem(LS_TWELVE, twelve);
       const msg = document.getElementById('modal-save-msg');
       msg.style.display = 'inline';
       setTimeout(() => { msg.style.display = 'none'; this.closeModal(); this.loadAll(); }, 1200);
@@ -1982,11 +2247,91 @@
 
     },
 
+    // ── FEATURED STOCK ───────────────────────────────
+    async loadFeaturedStock() {
+      const cfg = getCfg();
+      const el  = document.getElementById('featured-stock-container');
+      if (!el) return;
+
+      if (!cfg.twelve) {
+        el.innerHTML = `<div class="featured-stock">
+          <div class="featured-stock-label">Aandeel van de dag</div>
+          <div class="no-key-notice" style="margin-top:0.8rem;padding:0.8rem;text-align:center;border:1px dashed #3a3020;border-radius:3px;">
+            <p style="font-family:'DM Sans',sans-serif;font-size:0.73rem;color:#6a6050;margin-bottom:0.5rem;line-height:1.5;">
+              Twelve Data API-sleutel vereist<br>voor koersgrafieken.
+            </p>
+            <button class="btn-setup" onclick="App.openModal()" style="font-size:0.68rem;padding:0.3rem 0.8rem;">Sleutel toevoegen</button>
+          </div>
+        </div>`;
+        return;
+      }
+
+      // Bepaal de grootste beweger van de dag uit bekende instrumenten
+      // We hergebruiken de Finnhub-data die al in de ticker staat (tickerMap is lokaal in loadMarketData)
+      // Als alternatief: gebruik de gecachede koersen om de best mover te kiezen
+      const candidates = [
+        { symbol: 'ASML',  label: 'ASML Holding',  twelve: 'ASML'  },
+        { symbol: 'SHEL',  label: 'Shell',          twelve: 'SHEL'  },
+        { symbol: 'AAPL',  label: 'Apple',          twelve: 'AAPL'  },
+        { symbol: 'MSFT',  label: 'Microsoft',      twelve: 'MSFT'  },
+        { symbol: 'NVDA',  label: 'Nvidia',         twelve: 'NVDA'  },
+        { symbol: 'AMZN',  label: 'Amazon',         twelve: 'AMZN'  },
+        { symbol: 'GOOGL', label: 'Alphabet',       twelve: 'GOOGL' },
+      ];
+
+      // Haal dagkoersen op uit cache (gevuld door loadMarketData via Finnhub)
+      let bestSymbol = null;
+      let bestPct    = -Infinity;
+      let bestLabel  = '';
+
+      if (cfg.finnhub) {
+        for (const c of candidates) {
+          const ck   = 'fh_' + c.symbol.replace(/[^a-zA-Z0-9]/g, '_');
+          const data = cacheGet(ck);
+          if (data && Math.abs(data.changePct) > Math.abs(bestPct)) {
+            bestPct    = data.changePct;
+            bestSymbol = c.twelve;
+            bestLabel  = c.label;
+          }
+        }
+      }
+
+      // Geen Finnhub data? Fallback naar ASML als standaard
+      if (!bestSymbol) { bestSymbol = 'ASML'; bestLabel = 'ASML Holding'; }
+
+      try {
+        // Haal 30-daagse tijdreeks op via Twelve Data
+        const tsData = await fetchTwelveTimeSeries(bestSymbol, cfg.twelve);
+
+        // Haal huidige dagkoers uit Finnhub cache voor nauwkeurige today% change
+        const fhCk    = 'fh_' + bestSymbol.replace(/[^a-zA-Z0-9]/g, '_');
+        const fhQuote = cacheGet(fhCk);
+
+        const reason = bestPct !== -Infinity
+          ? `${fmtPct(bestPct)} koersbeweging vandaag`
+          : null;
+
+        el.innerHTML = renderFeaturedStock(tsData, fhQuote, reason);
+      } catch (e) {
+        el.innerHTML = `<div class="featured-stock">
+          <div class="featured-stock-label">Aandeel van de dag</div>
+          <div class="error-card" style="margin-top:0.8rem;border-left-color:#5a4a3a;">
+            <div class="error-card-title" style="color:#7a6050;">Grafiek niet beschikbaar</div>
+            <div class="error-card-msg">${esc(e.message)}</div>
+            <button class="error-card-action" onclick="App.loadFeaturedStock()">Opnieuw proberen</button>
+          </div>
+        </div>`;
+      }
+    },
+
     // ── INIT ─────────────────────────────────────────
     async loadAll() {
       this.setStatus('loading');
       try {
-        await Promise.allSettled([this.loadMarketData(), this.loadNews()]);
+        // Marktdata eerst — zodat Finnhub cache beschikbaar is voor de "beste beweger" selectie
+        await this.loadMarketData();
+        // Nieuws en featured stock parallel
+        await Promise.allSettled([this.loadNews(), this.loadFeaturedStock()]);
         this.setStatus('live');
         this.updateEditionUI();
       } catch {
