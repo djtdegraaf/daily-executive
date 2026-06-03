@@ -1611,12 +1611,14 @@
   }
 
   // Twelve Data: 30-daagse dagelijkse tijdreeks voor een aandeel
-  async function fetchTwelveTimeSeries(symbol, apiKey) {
-    const ck = 'twelve_ts_' + symbol.replace(/[^a-zA-Z0-9]/g, '_');
+  // exchange: optionele MIC-code, bijv. 'XAMS' voor Euronext Amsterdam
+  async function fetchTwelveTimeSeries(symbol, apiKey, exchange = '') {
+    const ck = 'twelve_ts_' + symbol.replace(/[^a-zA-Z0-9]/g, '_') + (exchange ? '_' + exchange : '');
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31&apikey=${encodeURIComponent(apiKey)}`;
+    const exParam = exchange ? `&exchange=${encodeURIComponent(exchange)}` : '';
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31${exParam}&apikey=${encodeURIComponent(apiKey)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Twelve Data HTTP ${res.status}`);
     const data = await res.json();
@@ -1843,7 +1845,7 @@
     </svg>`;
   }
 
-  function renderFeaturedStock(stockData, quote, reason) {
+  function renderFeaturedStock(stockData, quote, reason, note = '') {
     const series  = stockData.series;
     const first   = series[0].close;
     const last    = series[series.length - 1].close;
@@ -1862,7 +1864,7 @@
         <div>
           <div class="featured-stock-label">Aandeel van de dag</div>
           <div class="featured-stock-name">${esc(stockData.name)}</div>
-          <div class="featured-stock-exchange">${esc(stockData.exchange)}</div>
+          <div class="featured-stock-exchange">${esc(stockData.exchange)}${note ? ` · ${note}` : ''}</div>
         </div>
         <div class="featured-stock-price-block">
           <div class="featured-stock-price">${cur}${fmtNum(curr, 2)}</div>
@@ -2269,49 +2271,58 @@
       // Bepaal de grootste beweger van de dag uit bekende instrumenten
       // We hergebruiken de Finnhub-data die al in de ticker staat (tickerMap is lokaal in loadMarketData)
       // Als alternatief: gebruik de gecachede koersen om de best mover te kiezen
+      // Twelve Data gratis tier: uitsluitend US-genoteerde symbolen
+      // Europese aandelen via hun Nasdaq/NYSE ADR-notering (USD, zelfde % beweging)
       const candidates = [
-        { symbol: 'ASML',  label: 'ASML Holding',  twelve: 'ASML'  },
-        { symbol: 'SHEL',  label: 'Shell',          twelve: 'SHEL'  },
-        { symbol: 'AAPL',  label: 'Apple',          twelve: 'AAPL'  },
-        { symbol: 'MSFT',  label: 'Microsoft',      twelve: 'MSFT'  },
-        { symbol: 'NVDA',  label: 'Nvidia',         twelve: 'NVDA'  },
-        { symbol: 'AMZN',  label: 'Amazon',         twelve: 'AMZN'  },
-        { symbol: 'GOOGL', label: 'Alphabet',       twelve: 'GOOGL' },
+        { fh: 'ASML',    label: 'ASML Holding', twelve: 'ASML',  note: 'Nasdaq ADR' },
+        { fh: 'SHEL',    label: 'Shell',         twelve: 'SHEL',  note: 'NYSE ADR'   },
+        { fh: 'INGA.AS', label: 'ING Groep',     twelve: 'ING',   note: 'NYSE ADR'   },
+        { fh: 'AAPL',    label: 'Apple',         twelve: 'AAPL',  note: ''           },
+        { fh: 'MSFT',    label: 'Microsoft',     twelve: 'MSFT',  note: ''           },
+        { fh: 'NVDA',    label: 'Nvidia',        twelve: 'NVDA',  note: ''           },
+        { fh: 'AMZN',    label: 'Amazon',        twelve: 'AMZN',  note: ''           },
+        { fh: 'GOOGL',   label: 'Alphabet',      twelve: 'GOOGL', note: ''           },
       ];
 
       // Haal dagkoersen op uit cache (gevuld door loadMarketData via Finnhub)
-      let bestSymbol = null;
-      let bestPct    = -Infinity;
-      let bestLabel  = '';
+      let bestSymbol   = null;
+      let bestExchange = '';
+      let bestFhKey    = '';
+      let bestNote     = '';
+      let bestPct      = -Infinity;
+      let bestLabel    = '';
 
       if (cfg.finnhub) {
         for (const c of candidates) {
-          const ck   = 'fh_' + c.symbol.replace(/[^a-zA-Z0-9]/g, '_');
+          const ck   = 'fh_' + c.fh.replace(/[^a-zA-Z0-9]/g, '_');
           const data = cacheGet(ck);
           if (data && Math.abs(data.changePct) > Math.abs(bestPct)) {
-            bestPct    = data.changePct;
-            bestSymbol = c.twelve;
-            bestLabel  = c.label;
+            bestPct      = data.changePct;
+            bestSymbol   = c.twelve;
+            bestExchange = '';
+            bestFhKey    = c.fh;
+            bestLabel    = c.label;
+            bestNote     = c.note;
           }
         }
       }
 
-      // Geen Finnhub data? Fallback naar ASML als standaard
-      if (!bestSymbol) { bestSymbol = 'ASML'; bestLabel = 'ASML Holding'; }
+      // Geen Finnhub data? Fallback naar ASML Amsterdam als standaard
+      if (!bestSymbol) { bestSymbol = 'ASML'; bestExchange = ''; bestFhKey = 'ASML'; bestLabel = 'ASML Holding'; bestNote = 'Nasdaq ADR'; }
 
       try {
-        // Haal 30-daagse tijdreeks op via Twelve Data
-        const tsData = await fetchTwelveTimeSeries(bestSymbol, cfg.twelve);
+        // Haal 30-daagse tijdreeks op via Twelve Data (met optionele exchange-parameter)
+        const tsData = await fetchTwelveTimeSeries(bestSymbol, cfg.twelve, bestExchange);
 
         // Haal huidige dagkoers uit Finnhub cache voor nauwkeurige today% change
-        const fhCk    = 'fh_' + bestSymbol.replace(/[^a-zA-Z0-9]/g, '_');
+        const fhCk    = 'fh_' + bestFhKey.replace(/[^a-zA-Z0-9]/g, '_');
         const fhQuote = cacheGet(fhCk);
 
         const reason = bestPct !== -Infinity
           ? `${fmtPct(bestPct)} koersbeweging vandaag`
           : null;
 
-        el.innerHTML = renderFeaturedStock(tsData, fhQuote, reason);
+        el.innerHTML = renderFeaturedStock(tsData, fhQuote, reason, bestNote);
       } catch (e) {
         el.innerHTML = `<div class="featured-stock">
           <div class="featured-stock-label">Aandeel van de dag</div>
