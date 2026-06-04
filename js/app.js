@@ -673,7 +673,9 @@
       let rows = '';
       let anySuccess = false;
 
-      if (!cfg.finnhub) {
+      // Op live site: server-side proxy beschikbaar — geen localStorage sleutel nodig
+      // Lokaal: sleutel vereist in localStorage
+      if (!IS_LIVE && !cfg.finnhub) {
         tbody.innerHTML = `<tr><td colspan="3">
           <div class="no-key-notice" style="padding:1rem;text-align:center;">
             <p style="font-family:'DM Sans',sans-serif;font-size:0.75rem;color:#6a6050;margin-bottom:0.5rem;">
@@ -718,7 +720,7 @@
 
       // EUR/USD via Alpha Vantage
       let forexRow = '';
-      if (!cfg.av) {
+      if (!IS_LIVE && !cfg.av) {
         forexRow = `<tr class="market-error-row"><td class="market-name">EUR/USD<span class="market-sub">Valuta</span></td>
           <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">Geen AV-sleutel</td></tr>`;
       } else {
@@ -873,7 +875,7 @@
       const el  = document.getElementById('featured-stock-container');
       if (!el) return;
 
-      if (!cfg.twelve) {
+      if (!IS_LIVE && !cfg.twelve) {
         el.innerHTML = `<div class="featured-stock">
           <div class="featured-stock-label">Aandeel van de dag</div>
           <div class="no-key-notice" style="margin-top:0.8rem;padding:0.8rem;text-align:center;border:1px dashed #3a3020;border-radius:3px;">
