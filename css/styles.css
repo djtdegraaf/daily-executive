@@ -1147,3 +1147,106 @@
       .footer-top { grid-template-columns: 1fr; }
       .container { padding: 0 1rem; }
     }
+
+    /* ── INSIDER TRANSACTIONS ─────────────────────────────── */
+    .insider-card {
+      background: var(--dark-card);
+      border-radius: 4px;
+      padding: 1.4rem 1.5rem;
+      color: #e8dfc8;
+    }
+
+    .insider-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .insider-card-title {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.63rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold-light);
+    }
+
+    .insider-symbol-select {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.72rem;
+      background: #2a2418;
+      border: 1px solid #3a3020;
+      color: #d4c9b0;
+      padding: 0.25rem 0.5rem;
+      border-radius: 2px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .insider-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .insider-table tr {
+      border-bottom: 1px solid #2a2418;
+    }
+
+    .insider-table tr:last-child { border-bottom: none; }
+
+    .insider-table td {
+      padding: 0.55rem 0;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.74rem;
+      vertical-align: top;
+    }
+
+    .insider-name {
+      color: #d4c9b0;
+      font-weight: 500;
+      max-width: 120px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .insider-role {
+      display: block;
+      font-size: 0.62rem;
+      color: #5a5040;
+      margin-top: 0.1rem;
+    }
+
+    .insider-buy {
+      color: #5cb87a;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .insider-sell {
+      color: #e05555;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .insider-shares {
+      text-align: right;
+      color: #a09070;
+      font-size: 0.68rem;
+    }
+
+    .insider-date {
+      text-align: right;
+      color: #5a5040;
+      font-size: 0.65rem;
+    }
+
+    .insider-empty {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.75rem;
+      color: #5a5040;
+      text-align: center;
+      padding: 1rem 0;
+      font-style: italic;
+    }

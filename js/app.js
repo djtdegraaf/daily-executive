@@ -335,27 +335,27 @@
   // ═══════════════════════════════════════════════
 
   // Sidebar marktkaart + ticker
+  // Finnhub gratis tier ondersteunt GEEN index-symbolen (^AEX, ^GSPC etc.)
+  // → vervangen door ETFs die dezelfde markt volgen en wél gratis zijn
   const MARKET_INSTRUMENTS = [
-    { label: 'AEX',      sub: 'Amsterdam',   finnhub: '^AEX',    decimals: 2, prefix: '' },
-    { label: 'DAX',      sub: 'Frankfurt',   finnhub: '^GDAXI',  decimals: 2, prefix: '' },
-    { label: 'CAC 40',   sub: 'Parijs',      finnhub: '^FCHI',   decimals: 2, prefix: '' },
-    { label: 'S&P 500',  sub: 'New York',    finnhub: '^GSPC',   decimals: 2, prefix: '' },
-    { label: 'Nasdaq',   sub: 'New York',    finnhub: '^IXIC',   decimals: 2, prefix: '' },
-    { label: 'ASML',     sub: 'Euronext',    finnhub: 'ASML',    decimals: 2, prefix: '€' },
-    { label: 'Shell',    sub: 'London',      finnhub: 'SHEL',    decimals: 2, prefix: '' },
-    { label: 'ING',      sub: 'Amsterdam',   finnhub: 'INGA.AS', decimals: 3, prefix: '€' },
+    { label: 'AEX (EWN)',   sub: 'NL ETF · USD',    finnhub: 'EWN',  decimals: 2, prefix: '$' },
+    { label: 'DAX (EWG)',   sub: 'DE ETF · USD',    finnhub: 'EWG',  decimals: 2, prefix: '$' },
+    { label: 'S&P 500',     sub: 'SPY ETF · USD',   finnhub: 'SPY',  decimals: 2, prefix: '$' },
+    { label: 'Nasdaq 100',  sub: 'QQQ ETF · USD',   finnhub: 'QQQ',  decimals: 2, prefix: '$' },
+    { label: 'ASML',        sub: 'Nasdaq · USD',    finnhub: 'ASML', decimals: 2, prefix: '$' },
+    { label: 'Apple',       sub: 'Nasdaq · USD',    finnhub: 'AAPL', decimals: 2, prefix: '$' },
+    { label: 'Microsoft',   sub: 'Nasdaq · USD',    finnhub: 'MSFT', decimals: 2, prefix: '$' },
+    { label: 'Nvidia',      sub: 'Nasdaq · USD',    finnhub: 'NVDA', decimals: 2, prefix: '$' },
   ];
 
-  // Extra aandelen uitsluitend voor de ticker (niet in de sidebar tabel)
+  // Extra aandelen uitsluitend voor de ticker
   const TICKER_EXTRA = [
-    { label: 'Apple',     finnhub: 'AAPL',  decimals: 2, prefix: '$' },
-    { label: 'Microsoft', finnhub: 'MSFT',  decimals: 2, prefix: '$' },
-    { label: 'Nvidia',    finnhub: 'NVDA',  decimals: 2, prefix: '$' },
     { label: 'Amazon',    finnhub: 'AMZN',  decimals: 2, prefix: '$' },
     { label: 'Alphabet',  finnhub: 'GOOGL', decimals: 2, prefix: '$' },
+    { label: 'Meta',      finnhub: 'META',  decimals: 2, prefix: '$' },
+    { label: 'Shell',     finnhub: 'SHEL',  decimals: 2, prefix: '$' },
     { label: 'Unilever',  finnhub: 'UL',    decimals: 2, prefix: '$' },
     { label: 'Philips',   finnhub: 'PHG',   decimals: 2, prefix: '$' },
-    { label: 'Heineken',  finnhub: 'HEIA.AS',decimals:2, prefix: '€' },
   ];
 
   // ═══════════════════════════════════════════════
@@ -496,6 +496,69 @@
       </div>
       ${reason ? `<div class="featured-mover-reason">Grootste beweger vandaag · ${esc(reason)}</div>` : ''}
     </div>`;
+  }
+
+  // ── INSIDER TRANSACTIONS ────────────────────────────
+  async function fetchInsiderTransactions(symbol) {
+    const ck = 'insider_' + symbol.replace(/[^a-zA-Z0-9]/g, '_');
+    const hit = cacheGet(ck);
+    if (hit) return hit;
+
+    const url = IS_LIVE
+      ? `/api/insider?symbol=${encodeURIComponent(symbol)}`
+      : `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${encodeURIComponent(symbol)}&token=${getCfg().finnhub}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Insider HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    cacheSet(ck, data, 3_600_000); // 1 uur
+    return data;
+  }
+
+  function renderInsiderTable(data) {
+    const transactions = (data.data || [])
+      .filter(t => t.transactionType === 'P-Purchase' || t.transactionType === 'S-Sale')
+      .slice(0, 8);
+
+    if (!transactions.length) {
+      return `<div class="insider-empty">Geen recente insider-transacties beschikbaar</div>`;
+    }
+
+    return `<table class="insider-table"><tbody>` +
+      transactions.map(t => {
+        const isBuy = t.transactionType === 'P-Purchase';
+        const label = isBuy ? '▲ Koop' : '▼ Verkoop';
+        const cls   = isBuy ? 'insider-buy' : 'insider-sell';
+        const shares = t.share ? Math.abs(t.share).toLocaleString('nl-NL') : '–';
+        const value  = t.share && t.price
+          ? '$' + (Math.abs(t.share) * t.price / 1_000_000).toFixed(1) + 'M'
+          : '–';
+        const date = t.transactionDate || '';
+        const name = (t.name || 'Onbekend').split(' ').slice(-1)[0]; // achternaam
+        const role = (t.officerTitle || '').slice(0, 22);
+        return `<tr>
+          <td class="insider-name">${esc(name)}<span class="insider-role">${esc(role)}</span></td>
+          <td class="${cls}">${label}</td>
+          <td class="insider-shares">${shares}<br><span style="font-size:0.6rem;color:#4a4030">${value}</span></td>
+          <td class="insider-date">${date.slice(0, 10)}</td>
+        </tr>`;
+      }).join('') +
+      `</tbody></table>`;
+  }
+
+  async function loadInsiderWidget(symbol) {
+    const el = document.getElementById('insider-container');
+    if (!el) return;
+
+    try {
+      const data = await fetchInsiderTransactions(symbol);
+      el.querySelector('.insider-table-body').innerHTML = renderInsiderTable(data);
+    } catch (e) {
+      el.querySelector('.insider-table-body').innerHTML =
+        `<div class="insider-empty">${esc(e.message)}</div>`;
+    }
   }
 
   function renderBriefingItem(article) {
@@ -734,7 +797,7 @@
             <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">${e.message.slice(0, 40)}</td></tr>`;
         }
       }
-      if (forexRow && cfg.finnhub) tbody.innerHTML += forexRow;
+      if (forexRow) tbody.innerHTML += forexRow;
 
       // Bitcoin via CoinGecko (geen sleutel nodig)
       try {
@@ -959,10 +1022,14 @@
     async loadAll() {
       this.setStatus('loading');
       try {
-        // Marktdata eerst — zodat Finnhub cache beschikbaar is voor de "beste beweger" selectie
         await this.loadMarketData();
-        // Nieuws en featured stock parallel
-        await Promise.allSettled([this.loadNews(), this.loadFeaturedStock()]);
+        const extras = [this.loadNews(), this.loadFeaturedStock()];
+        // Insider widget alleen op bedrijven-pagina
+        if (PAGE.page === 'bedrijven') {
+          const sym = document.getElementById('insider-symbol')?.value || 'AAPL';
+          extras.push(loadInsiderWidget(sym));
+        }
+        await Promise.allSettled(extras);
         this.setStatus('live');
         this.updateEditionUI();
       } catch {
@@ -995,5 +1062,8 @@
   };
 
   App.init();
+
+  // Globaal beschikbaar voor onchange handlers in HTML
+  window.loadInsiderWidget = loadInsiderWidget;
 
 })();
