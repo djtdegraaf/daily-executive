@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Executive — Macro-economie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div id="setup-banner" class="setup-banner hidden">
+  <div class="setup-banner-text"><strong>⚙ Live marktdata vereist API-sleutels</strong> — Finnhub en Alpha Vantage zijn gratis beschikbaar.</div>
+  <div class="setup-banner-actions">
+    <button class="btn-setup" onclick="App.openModal()">Sleutels instellen</button>
+    <button class="btn-dismiss" onclick="App.dismissBanner()">Verberg</button>
+  </div>
+</div>
+
+<div id="api-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 class="modal-title">API-sleutels instellen</h2>
+    <p class="modal-subtitle">Uw sleutels worden uitsluitend lokaal opgeslagen en nooit verzonden.</p>
+    <div class="form-group"><label class="form-label" for="input-finnhub">Finnhub &nbsp;<a href="https://finnhub.io/register" target="_blank" rel="noopener">Gratis →</a></label><input id="input-finnhub" type="password" class="form-input" autocomplete="off" /></div>
+    <div class="form-group"><label class="form-label" for="input-av">Alpha Vantage &nbsp;<a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Gratis →</a></label><input id="input-av" type="password" class="form-input" autocomplete="off" /></div>
+    <div class="form-group"><label class="form-label" for="input-twelve">Twelve Data &nbsp;<a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">Gratis →</a></label><input id="input-twelve" type="password" class="form-input" autocomplete="off" /></div>
+    <div class="form-group"><label class="form-label">CoinGecko &amp; RSS</label><p class="form-note ok">✓ Geen sleutel nodig</p></div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="App.saveKeys()">Opslaan &amp; laden</button>
+      <button class="btn-secondary" onclick="App.closeModal()">Annuleren</button>
+      <span id="modal-save-msg" style="font-family:'DM Sans',sans-serif;font-size:0.72rem;color:var(--green);display:none;">✓ Opgeslagen</span>
+    </div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-date" id="topbar-date">–</div>
+  <div class="topbar-links"><a href="#">Abonneren</a><a href="#">Archief</a><a href="#">Nieuwsbrief</a></div>
+  <div class="topbar-right">
+    <span id="live-status-dot" class="live-dot loading"></span>
+    <span id="live-status-label" style="font-size:0.68rem;letter-spacing:0.08em;">Laden…</span>
+    <button class="settings-btn" title="API-instellingen" onclick="App.openModal()">⚙</button>
+  </div>
+</div>
+
+<header class="site-header">
+  <div class="logo">Daily <em>Executive</em></div>
+  <p class="tagline">Macro-economie &nbsp;·&nbsp; Centrale Banken &amp; Conjunctuur</p>
+  <p class="edition-line" id="edition-line"></p>
+</header>
+
+<div class="next-update-bar" id="next-update-bar" style="display:none">
+  Volgende editie: <strong id="next-edition-date"></strong> &nbsp;·&nbsp; Nieuws ververst om <strong id="next-news-time"></strong> &nbsp;·&nbsp; Koersen live elke 60 sec
+</div>
+<nav class="primary-nav" aria-label="Hoofdnavigatie">
+  <ul>
+    <li><a href="index.html">Vandaag</a></li>
+    <li><a href="aex.html">AEX</a></li>
+    <li><a href="bedrijven.html">Bedrijven</a></li>
+    <li><a href="macro.html">Macro</a></li>
+    <li><a href="geopolitiek.html">Geopolitiek</a></li>
+  </ul>
+</nav>
+
+<div class="ticker-wrap" aria-label="Koersticker">
+  <div class="ticker-label">Live</div>
+  <div id="ticker-scroll-area">
+    <div id="ticker-track" class="ticker-track"><span class="ticker-loading">Koersen laden…</span></div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="content-grid">
+    <main>
+      <div class="section-label">Macro &amp; Monetair beleid</div>
+      <div id="lead-article-container">
+        <div class="lead-article">
+          <div class="shimmer shimmer-line" style="width:60%;margin-bottom:1rem;"></div>
+          <div class="shimmer shimmer-line" style="width:90%;height:2em;margin-bottom:0.8rem;"></div>
+          <div class="shimmer shimmer-line" style="width:100%;"></div>
+          <div class="shimmer shimmer-line" style="width:88%;"></div>
+        </div>
+      </div>
+      <div class="section-label" style="margin-top:2.4rem;">Economische indicatoren</div>
+      <div id="article-grid-container" class="article-grid">
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:90%;"></div><div class="shimmer shimmer-line" style="width:75%;"></div></div>
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:85%;"></div><div class="shimmer shimmer-line" style="width:70%;"></div></div>
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:88%;"></div><div class="shimmer shimmer-line" style="width:80%;"></div></div>
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:92%;"></div><div class="shimmer shimmer-line" style="width:68%;"></div></div>
+      </div>
+    </main>
+
+    <aside class="sidebar">
+      <div class="market-card">
+        <div class="market-card-header"><div class="market-card-title">Markten</div><div class="market-card-time" id="market-time">–</div></div>
+        <table class="market-table"><tbody id="market-tbody">
+          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+        </tbody></table>
+      </div>
+      <div id="featured-stock-container">
+        <div class="featured-stock"><div class="featured-stock-label">Aandeel van de dag</div><div style="margin-top:0.8rem"><div class="shimmer market-shimmer" style="width:60%;height:14px;margin-bottom:0.5rem;"></div><div class="shimmer market-shimmer" style="width:100%;height:90px;margin-bottom:0.5rem;"></div><div class="shimmer market-shimmer" style="width:100%;height:32px;"></div></div></div>
+      </div>
+      <div id="quote-container"><div class="quote-block"><div class="quote-label">Uitgelicht</div><div class="shimmer shimmer-line" style="width:95%;height:3em;margin-bottom:0.8rem;"></div><div class="shimmer shimmer-line" style="width:55%;height:0.9em;"></div></div></div>
+      <div class="briefing-card">
+        <h3 class="briefing-title"><span>◆</span> Macro Briefing</h3>
+        <ul class="briefing-list" id="briefing-list">
+          <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
+          <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
+          <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
+          <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div><div class="footer-logo">Daily <em>Executive</em></div><p class="footer-desc">De professionele marktbriefing voor Nederlandse executives en beleidsmakers.</p></div>
+      <div><div class="footer-col-title">Rubrieken</div><ul class="footer-links"><li><a href="index.html">Vandaag</a></li><li><a href="aex.html">AEX &amp; Beurzen</a></li><li><a href="bedrijven.html">Bedrijven</a></li><li><a href="macro.html">Macro-economie</a></li><li><a href="geopolitiek.html">Geopolitiek</a></li></ul></div>
+      <div><div class="footer-col-title">Diensten</div><ul class="footer-links"><li><a href="#">Nieuwsbrief</a></li><li><a href="#">Abonnement</a></li><li><a href="#">Archief</a></li></ul></div>
+      <div><div class="footer-col-title">Bedrijf</div><ul class="footer-links"><li><a href="#">Over ons</a></li><li><a href="#">Privacy</a></li><li><a href="#">Contact</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">&copy; 2026 Daily Executive B.V. &nbsp;·&nbsp; Amsterdam, Nederland</span>
+      <div class="footer-badges"><span class="badge">GDPR Compliant</span><span class="badge">Live Data</span></div>
+    </div>
+    <div class="data-disclaimer">Marktdata: Finnhub, Alpha Vantage, CoinGecko. Nieuws: Reuters, BBC, Guardian. Uitsluitend indicatief, geen beleggingsadvies.</div>
+  </div>
+</footer>
+
+<script>
+  window.PAGE_CONFIG = {
+    page:      'macro',
+    title:     'Daily Executive — Macro-economie',
+    activeNav: 'Macro',
+    feeds: [
+      'https://feeds.reuters.com/reuters/businessNews',
+      'https://feeds.reuters.com/reuters/financialsNews',
+      'https://feeds.bbci.co.uk/news/business/rss.xml',
+      'https://www.theguardian.com/business/rss',
+      'https://feeds.nos.nl/nosnieuwseconomie',
+    ],
+    filterKeywords: [
+      'ecb','fed','federal reserve','central bank','interest rate','rate cut','rate hike',
+      'inflation','cpi','ppi','deflation','stagflation',
+      'gdp','gross domestic product','recession','growth','contraction',
+      'unemployment','jobs','payroll','labour market','labor market',
+      'monetary policy','fiscal policy','stimulus','austerity','budget','deficit','debt',
+      'eurozone','euro area','imf','world bank','oecd','bis',
+      'consumer prices','producer prices','wage growth','productivity',
+      'bond yield','treasury','bund','gilt','sovereign',
+    ],
+  };
+</script>
+<script src="js/app.js"></script>
+</body>
+</html>
