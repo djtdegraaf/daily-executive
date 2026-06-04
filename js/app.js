@@ -134,12 +134,23 @@
   // API FETCHERS
   // ═══════════════════════════════════════════════
 
+  // Detecteer of we op de live site draaien (server-side proxy beschikbaar)
+  // of lokaal (directe API-aanroep met localStorage-sleutels als fallback)
+  const IS_LIVE = window.location.hostname !== 'localhost' &&
+                  window.location.hostname !== '127.0.0.1' &&
+                  !window.location.hostname.includes('192.168.');
+
   async function fetchFinnhub(symbol, apiKey) {
     const ck = 'fh_' + symbol.replace(/[^a-zA-Z0-9]/g, '_');
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`;
+    // Op de live site: gebruik server-side proxy (sleutel verborgen voor bezoekers)
+    // Lokaal: gebruik directe API-aanroep met localStorage-sleutel
+    const url = IS_LIVE
+      ? `/api/quote?symbol=${encodeURIComponent(symbol)}`
+      : `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`;
+
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Finnhub HTTP ${res.status}`);
     const data = await res.json();
@@ -164,7 +175,10 @@
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${encodeURIComponent(apiKey)}`;
+    const url = IS_LIVE
+      ? `/api/forex`
+      : `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${encodeURIComponent(apiKey)}`;
+
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
     const data = await res.json();
@@ -194,15 +208,14 @@
     return result;
   }
 
-  // Twelve Data: 30-daagse dagelijkse tijdreeks voor een aandeel
-  // exchange: optionele MIC-code, bijv. 'XAMS' voor Euronext Amsterdam
   async function fetchTwelveTimeSeries(symbol, apiKey, exchange = '') {
     const ck = 'twelve_ts_' + symbol.replace(/[^a-zA-Z0-9]/g, '_') + (exchange ? '_' + exchange : '');
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    const exParam = exchange ? `&exchange=${encodeURIComponent(exchange)}` : '';
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31${exParam}&apikey=${encodeURIComponent(apiKey)}`;
+    const url = IS_LIVE
+      ? `/api/timeseries?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31`
+      : `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31&apikey=${encodeURIComponent(apiKey)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Twelve Data HTTP ${res.status}`);
     const data = await res.json();
@@ -952,7 +965,8 @@
       this.scheduleNewsRefresh();     // nieuws elk uur op het hele uur
 
       const cfg = getCfg();
-      if (!cfg.finnhub) {
+      // Setup banner alleen tonen op lokale ontwikkelomgeving zonder sleutels
+      if (!IS_LIVE && !cfg.finnhub) {
         document.getElementById('setup-banner').classList.remove('hidden');
       }
 
