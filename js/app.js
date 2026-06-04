@@ -744,7 +744,7 @@
             <p style="font-family:'DM Sans',sans-serif;font-size:0.75rem;color:#6a6050;margin-bottom:0.5rem;">
               Geen Finnhub API-sleutel ingesteld.<br>Indices en aandelen zijn niet beschikbaar.
             </p>
-            <button class="btn-setup" onclick="App.openModal()" style="font-size:0.7rem;padding:0.3rem 0.8rem;">Sleutel toevoegen</button>
+            <button class="btn-setup" data-action="open-modal" style="font-size:0.7rem;padding:0.3rem 0.8rem;">Sleutel toevoegen</button>
           </div>
         </td></tr>`;
       } else {
@@ -898,7 +898,7 @@
         leadEl.innerHTML = `<div class="error-card">
           <div class="error-card-title">Nieuws niet beschikbaar</div>
           <div class="error-card-msg">${esc(errMsg)}</div>
-          <button class="error-card-action" onclick="App.loadNews()">Opnieuw proberen</button>
+          <button class="error-card-action" data-action="retry-news">Opnieuw proberen</button>
         </div>`;
         document.getElementById('article-grid-container').innerHTML =
           `<div class="error-card" style="grid-column:1/-1">
@@ -945,7 +945,7 @@
             <p style="font-family:'DM Sans',sans-serif;font-size:0.73rem;color:#6a6050;margin-bottom:0.5rem;line-height:1.5;">
               Twelve Data API-sleutel vereist<br>voor koersgrafieken.
             </p>
-            <button class="btn-setup" onclick="App.openModal()" style="font-size:0.68rem;padding:0.3rem 0.8rem;">Sleutel toevoegen</button>
+            <button class="btn-setup" data-action="open-modal" style="font-size:0.68rem;padding:0.3rem 0.8rem;">Sleutel toevoegen</button>
           </div>
         </div>`;
         return;
@@ -1012,7 +1012,7 @@
           <div class="error-card" style="margin-top:0.8rem;border-left-color:#5a4a3a;">
             <div class="error-card-title" style="color:#7a6050;">Grafiek niet beschikbaar</div>
             <div class="error-card-msg">${esc(e.message)}</div>
-            <button class="error-card-action" onclick="App.loadFeaturedStock()">Opnieuw proberen</button>
+            <button class="error-card-action" data-action="retry-stock">Opnieuw proberen</button>
           </div>
         </div>`;
       }
@@ -1039,25 +1039,45 @@
 
     init() {
       this.startClock();
-      this.checkDailyReset();   // reset caches if new day
-      this.scheduleMidnightRefresh(); // fire at 00:00:01 elke dag
-      this.scheduleNewsRefresh();     // nieuws elk uur op het hele uur
+      this.checkDailyReset();
+      this.scheduleMidnightRefresh();
+      this.scheduleNewsRefresh();
 
       const cfg = getCfg();
-      // Setup banner alleen tonen op lokale ontwikkelomgeving zonder sleutels
       if (!IS_LIVE && !cfg.finnhub) {
         document.getElementById('setup-banner').classList.remove('hidden');
       }
 
-      this.loadAll();
+      // ── Event listeners (geen inline onclick in HTML) ──
+      const on = (sel, ev, fn) => document.querySelector(sel)?.addEventListener(ev, fn);
 
-      // Marktkoersen elke 60 seconden verversen (alleen marktdata, niet nieuws)
-      setInterval(() => this.loadMarketData(), 60_000);
+      on('.btn-setup',                'click', () => App.openModal());
+      on('.btn-dismiss',              'click', () => App.dismissBanner());
+      on('#api-modal .btn-primary',   'click', () => App.saveKeys());
+      on('#api-modal .btn-secondary', 'click', () => App.closeModal());
+      on('.settings-btn',             'click', () => App.openModal());
 
-      // Close modal on overlay click
-      document.getElementById('api-modal').addEventListener('click', function (e) {
+      // Insider symbol dropdown (alleen op bedrijven-pagina)
+      on('#insider-symbol', 'change', (e) => loadInsiderWidget(e.target.value));
+
+      // Modal sluiten op overlay-klik
+      document.getElementById('api-modal')?.addEventListener('click', function (e) {
         if (e.target === this) App.closeModal();
       });
+
+      // Delegeer klikken op dynamisch gegenereerde knoppen
+      document.addEventListener('click', (e) => {
+        if (e.target.matches('[data-action="retry-news"]'))    App.loadNews();
+        if (e.target.matches('[data-action="retry-stock"]'))   App.loadFeaturedStock();
+        if (e.target.matches('[data-action="open-modal"]'))    App.openModal();
+        if (e.target.matches('[data-action="retry-insider"]')) {
+          const sym = document.getElementById('insider-symbol')?.value || 'AAPL';
+          loadInsiderWidget(sym);
+        }
+      });
+
+      this.loadAll();
+      setInterval(() => this.loadMarketData(), 60_000);
     },
   };
 

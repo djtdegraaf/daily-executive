@@ -14,8 +14,8 @@
 <div id="setup-banner" class="setup-banner hidden">
   <div class="setup-banner-text"><strong>⚙ Live marktdata vereist API-sleutels</strong> — Finnhub en Alpha Vantage zijn gratis beschikbaar.</div>
   <div class="setup-banner-actions">
-    <button class="btn-setup" onclick="App.openModal()">Sleutels instellen</button>
-    <button class="btn-dismiss" onclick="App.dismissBanner()">Verberg</button>
+    <button class="btn-setup">Sleutels instellen</button>
+    <button class="btn-dismiss">Verberg</button>
   </div>
 </div>
 
@@ -28,8 +28,8 @@
     <div class="form-group"><label class="form-label" for="input-twelve">Twelve Data &nbsp;<a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">Gratis →</a></label><input id="input-twelve" type="password" class="form-input" autocomplete="off" /></div>
     <div class="form-group"><label class="form-label">CoinGecko &amp; RSS</label><p class="form-note ok">✓ Geen sleutel nodig</p></div>
     <div class="modal-actions">
-      <button class="btn-primary" onclick="App.saveKeys()">Opslaan &amp; laden</button>
-      <button class="btn-secondary" onclick="App.closeModal()">Annuleren</button>
+      <button class="btn-primary">Opslaan &amp; laden</button>
+      <button class="btn-secondary">Annuleren</button>
       <span id="modal-save-msg" style="font-family:'DM Sans',sans-serif;font-size:0.72rem;color:var(--green);display:none;">✓ Opgeslagen</span>
     </div>
   </div>
@@ -41,7 +41,7 @@
   <div class="topbar-right">
     <span id="live-status-dot" class="live-dot loading"></span>
     <span id="live-status-label" style="font-size:0.68rem;letter-spacing:0.08em;">Laden…</span>
-    <button class="settings-btn" title="API-instellingen" onclick="App.openModal()">⚙</button>
+    <button class="settings-btn" title="API-instellingen">⚙</button>
   </div>
 </div>
 
@@ -110,7 +110,7 @@
       <div id="insider-container" class="insider-card">
         <div class="insider-card-header">
           <div class="insider-card-title">Insider Transacties</div>
-          <select class="insider-symbol-select" id="insider-symbol" onchange="loadInsiderWidget(this.value)">
+          <select class="insider-symbol-select" id="insider-symbol">
             <option value="AAPL">Apple</option>
             <option value="MSFT">Microsoft</option>
             <option value="NVDA">Nvidia</option>
