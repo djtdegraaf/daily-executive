@@ -7,15 +7,15 @@
   // ═══════════════════════════════════════════════
   const PAGE = Object.assign({
     page:           'today',
-    title:          'Daily Executive — Uw dagelijkse marktbriefing',
-    activeNav:      'Vandaag',
+    title:          'Daily Executive — Your Daily Market Briefing',
+    activeNav:      'Today',
     // null = alle feeds; array = subset
     feeds: null,
     // null = geen filter; array van lowercase keywords
     filterKeywords: null,
     // Sectielabels
-    leadLabel:      'Hoofdverhaal',
-    gridLabel:      'Meer nieuws',
+    leadLabel:      'Lead Story',
+    gridLabel:      'More News',
   }, window.PAGE_CONFIG || {});
 
   // Pas <title> aan
@@ -713,7 +713,7 @@
     startClock() {
       document.getElementById('topbar-date').textContent = fmtDate(new Date());
       setInterval(() => {
-        document.getElementById('market-time').textContent = fmtTime(new Date()) ' ET';
+        document.getElementById('market-time').textContent = fmtTime(new Date()) + ' ET';
       }, 1000);
     },
 
@@ -821,7 +821,7 @@
         tickerEl.innerHTML = `<span class="ticker-loading">Prices unavailable — add API keys via ⚙</span>`;
       }
 
-      document.getElementById('market-time').textContent = fmtTime(new Date()) ' ET';
+      document.getElementById('market-time').textContent = fmtTime(new Date()) + ' ET';
     },
 
     // ── NEWS (RSS) ───────────────────────────────────
