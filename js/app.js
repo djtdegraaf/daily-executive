@@ -6,7 +6,7 @@
   // vóór app.js wordt geladen; defaults = Vandaag
   // ═══════════════════════════════════════════════
   const PAGE = Object.assign({
-    page:           'vandaag',
+    page:           'today',
     title:          'Daily Executive — Uw dagelijkse marktbriefing',
     activeNav:      'Vandaag',
     // null = alle feeds; array = subset
@@ -63,16 +63,16 @@
   // DATE / TIME UTILITIES
   // ═══════════════════════════════════════════════
 
-  const NL_DAYS   = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
-  const NL_MONTHS = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  const NL_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const NL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   function fmtDate(d) {
     const day = NL_DAYS[d.getDay()];
-    return `${day.charAt(0).toUpperCase()}${day.slice(1)} ${d.getDate()} ${NL_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    return `${day} ${NL_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   }
 
   function fmtTime(d) {
-    return d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
   function timeAgo(dateStr) {
@@ -80,16 +80,16 @@
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '';
     const mins = Math.floor((Date.now() - d.getTime()) / 60000);
-    if (mins < 1) return 'Zojuist';
-    if (mins < 60) return `${mins} min geleden`;
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs} uur geleden`;
-    return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+    if (hrs < 24) return `${hrs}h ago`;
+    return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
   }
 
   function fmtNum(n, dec = 2) {
     if (n == null || isNaN(n)) return '–';
-    return n.toLocaleString('nl-NL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   }
 
   function fmtPct(n) {
@@ -156,7 +156,7 @@
     const data = await res.json();
 
     if (data.error) throw new Error(`Finnhub: ${data.error}`);
-    if (!data.c || (data.c === 0 && data.pc === 0)) throw new Error(`Geen data voor ${symbol}`);
+    if (!data.c || (data.c === 0 && data.pc === 0)) throw new Error(`No data for ${symbol}`);
 
     const result = {
       price: data.c,
@@ -183,9 +183,9 @@
     if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
     const data = await res.json();
 
-    if (data['Note'] || data['Information']) throw new Error('Alpha Vantage rate limit bereikt — probeer later opnieuw');
+    if (data['Note'] || data['Information']) throw new Error('Alpha Vantage rate limit reached — please try again later');
     const rate = data['Realtime Currency Exchange Rate'];
-    if (!rate) throw new Error('Geen forex data van Alpha Vantage');
+    if (!rate) throw new Error('No forex data from Alpha Vantage');
 
     const result = { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
     cacheSet(ck, result, 300_000);
@@ -201,7 +201,7 @@
     const res = await fetch(url);
     if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
     const data = await res.json();
-    if (!data.bitcoin) throw new Error('Geen Bitcoin data van CoinGecko');
+    if (!data.bitcoin) throw new Error('No Bitcoin data from CoinGecko');
 
     const result = { price: data.bitcoin.usd, changePct: data.bitcoin.usd_24h_change };
     cacheSet(ck, result, 120_000);
@@ -306,7 +306,7 @@
       }
     }
 
-    if (!xml) throw new Error(`RSS niet beschikbaar: ${lastErr?.message || 'onbekende fout'}`);
+    if (!xml) throw new Error(`RSS unavailable: ${lastErr?.message || 'unknown error'}`);
 
     let doc = new DOMParser().parseFromString(xml, 'application/xml');
     if (doc.querySelector('parsererror')) {
@@ -366,7 +366,7 @@
     if (error) {
       return `<tr class="market-error-row">
         <td class="market-name">${label}<span class="market-sub">${sub}</span></td>
-        <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">Niet beschikbaar</td>
+        <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">Unavailable</td>
       </tr>`;
     }
     const up = changePct >= 0;
@@ -475,8 +475,8 @@
         </div>
         <div class="featured-stock-price-block">
           <div class="featured-stock-price">${cur}${fmtNum(curr, 2)}</div>
-          <div class="featured-stock-chg ${todayCls}">${todayArrow} ${fmtPct(todayPct)} vandaag</div>
-          <div class="featured-stock-period ${isUp ? 'up' : 'down'}">${fmtPct(chgPct)} afgelopen 30 dgn</div>
+          <div class="featured-stock-chg ${todayCls}">${todayArrow} ${fmtPct(todayPct)} today</div>
+          <div class="featured-stock-period ${isUp ? 'up' : 'down'}">${fmtPct(chgPct)} last 30 days</div>
         </div>
       </div>
       <div class="chart-area">${buildChartSVG(series, isUp)}</div>
@@ -490,11 +490,11 @@
           <span class="stat-value">${cur}${fmtNum(lo30, 2)}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">Beurs</span>
+          <span class="stat-label">Exchange</span>
           <span class="stat-value">${esc(stockData.exchange.split(' ')[0] || '–')}</span>
         </div>
       </div>
-      ${reason ? `<div class="featured-mover-reason">Grootste beweger vandaag · ${esc(reason)}</div>` : ''}
+      ${reason ? `<div class="featured-mover-reason">Biggest mover today · ${esc(reason)}</div>` : ''}
     </div>`;
   }
 
@@ -523,20 +523,20 @@
       .slice(0, 8);
 
     if (!transactions.length) {
-      return `<div class="insider-empty">Geen recente insider-transacties beschikbaar</div>`;
+      return `<div class="insider-empty">No recent insider transactions available</div>`;
     }
 
     return `<table class="insider-table"><tbody>` +
       transactions.map(t => {
         const isBuy = t.transactionType === 'P-Purchase';
-        const label = isBuy ? '▲ Koop' : '▼ Verkoop';
+        const label = isBuy ? '▲ Buy' : '▼ Sell';
         const cls   = isBuy ? 'insider-buy' : 'insider-sell';
-        const shares = t.share ? Math.abs(t.share).toLocaleString('nl-NL') : '–';
+        const shares = t.share ? Math.abs(t.share).toLocaleString('en-US') : '–';
         const value  = t.share && t.price
           ? '$' + (Math.abs(t.share) * t.price / 1_000_000).toFixed(1) + 'M'
           : '–';
         const date = t.transactionDate || '';
-        const name = (t.name || 'Onbekend').split(' ').slice(-1)[0]; // achternaam
+        const name = (t.name || 'Unknown').split(' ').slice(-1)[0]; // achternaam
         const role = (t.officerTitle || '').slice(0, 22);
         return `<tr>
           <td class="insider-name">${esc(name)}<span class="insider-role">${esc(role)}</span></td>
@@ -579,7 +579,7 @@
     const ago = timeAgo(article.pubDate);
 
     return `<div class="quote-block fade-in">
-      <div class="quote-label">Uitgelicht nieuws</div>
+      <div class="quote-label">Featured News</div>
       <blockquote class="quote-text">"${esc(displayStr)}"</blockquote>
       <p class="quote-attr">— <a href="${esc(article.link)}" target="_blank" rel="noopener" style="color:var(--gold)">${esc(article.title.slice(0, 60))}…</a>
         &nbsp;·&nbsp; ${esc(article.source)} &nbsp;·&nbsp; ${ago}</p>
@@ -713,7 +713,7 @@
     startClock() {
       document.getElementById('topbar-date').textContent = fmtDate(new Date());
       setInterval(() => {
-        document.getElementById('market-time').textContent = fmtTime(new Date()) + ' CET';
+        document.getElementById('market-time').textContent = fmtTime(new Date()) ' ET';
       }, 1000);
     },
 
@@ -721,8 +721,8 @@
       const dot   = document.getElementById('live-status-dot');
       const label = document.getElementById('live-status-label');
       dot.className = 'live-dot ' + state;
-      if (state === 'loading') label.textContent = 'Laden…';
-      else if (state === 'error') label.textContent = 'Fout';
+      if (state === 'loading') label.textContent = 'Loading…';
+      else if (state === 'error') label.textContent = 'Error';
       else label.textContent = 'Live';
     },
 
@@ -742,9 +742,9 @@
         tbody.innerHTML = `<tr><td colspan="3">
           <div class="no-key-notice" style="padding:1rem;text-align:center;">
             <p style="font-family:'DM Sans',sans-serif;font-size:0.75rem;color:#6a6050;margin-bottom:0.5rem;">
-              Geen Finnhub API-sleutel ingesteld.<br>Indices en aandelen zijn niet beschikbaar.
+              No Finnhub API key configured.<br>Indices and stocks are unavailable.
             </p>
-            <button class="btn-setup" data-action="open-modal" style="font-size:0.7rem;padding:0.3rem 0.8rem;">Sleutel toevoegen</button>
+            <button class="btn-setup" data-action="open-modal" style="font-size:0.7rem;padding:0.3rem 0.8rem;">Add key</button>
           </div>
         </td></tr>`;
       } else {
@@ -785,7 +785,7 @@
       let forexRow = '';
       if (!IS_LIVE && !cfg.av) {
         forexRow = `<tr class="market-error-row"><td class="market-name">EUR/USD<span class="market-sub">Valuta</span></td>
-          <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">Geen AV-sleutel</td></tr>`;
+          <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">No AV key</td></tr>`;
       } else {
         try {
           const fx = await fetchAVForex(cfg.av);
@@ -809,7 +809,7 @@
       } catch (e) {
         document.getElementById('market-tbody').innerHTML +=
           `<tr class="market-error-row"><td class="market-name">Bitcoin<span class="market-sub">CoinGecko</span></td>
-           <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">Niet beschikbaar</td></tr>`;
+           <td class="market-val" colspan="2" style="text-align:right;font-size:0.68rem;color:#5a4a3a;font-style:italic;">Unavailable</td></tr>`;
       }
 
       // Ticker opbouwen — elk instrument precies 1x; html+html voor naadloze CSS-animatie
@@ -818,10 +818,10 @@
         tickerEl.innerHTML = html + html;
         tickerEl.classList.remove('paused');
       } else {
-        tickerEl.innerHTML = `<span class="ticker-loading">Koersen niet beschikbaar — voeg API-sleutels toe via ⚙</span>`;
+        tickerEl.innerHTML = `<span class="ticker-loading">Prices unavailable — add API keys via ⚙</span>`;
       }
 
-      document.getElementById('market-time').textContent = fmtTime(new Date()) + ' CET';
+      document.getElementById('market-time').textContent = fmtTime(new Date()) ' ET';
     },
 
     // ── NEWS (RSS) ───────────────────────────────────
@@ -894,24 +894,24 @@
       if (articles.length === 0) {
         const errMsg = feedErrors.length
           ? feedErrors.slice(0, 3).join(' · ')
-          : 'Onbekende fout — controleer uw verbinding.';
+          : 'Unknown error — check your connection.';
         leadEl.innerHTML = `<div class="error-card">
-          <div class="error-card-title">Nieuws niet beschikbaar</div>
+          <div class="error-card-title">News unavailable</div>
           <div class="error-card-msg">${esc(errMsg)}</div>
           <button class="error-card-action" data-action="retry-news">Opnieuw proberen</button>
         </div>`;
         document.getElementById('article-grid-container').innerHTML =
           `<div class="error-card" style="grid-column:1/-1">
-            <div class="error-card-title">Artikelen niet beschikbaar</div>
-            <div class="error-card-msg">Geen van de ${FEEDS.length} bronnen kon worden geladen.</div>
+            <div class="error-card-title">Articles unavailable</div>
+            <div class="error-card-msg">None of the ${FEEDS.length} sources could be loaded.</div>
           </div>`;
         document.getElementById('briefing-list').innerHTML =
-          `<li><span class="bullet-icon">▸</span><span style="color:var(--muted);font-style:italic">Geen nieuws beschikbaar</span></li>`;
+          `<li><span class="bullet-icon">▸</span><span style="color:var(--muted);font-style:italic">No news available</span></li>`;
         document.getElementById('quote-container').innerHTML =
           `<div class="quote-block">
-            <div class="quote-label">Uitgelicht nieuws</div>
+            <div class="quote-label">Featured News</div>
             <p class="quote-text" style="font-size:0.9rem;font-family:'DM Sans',sans-serif;font-style:normal;color:var(--muted)">
-              Nieuws tijdelijk niet beschikbaar.
+              News temporarily unavailable.
             </p>
           </div>`;
 
@@ -957,7 +957,7 @@
             <p style="font-family:'DM Sans',sans-serif;font-size:0.73rem;color:#6a6050;margin-bottom:0.5rem;line-height:1.5;">
               Twelve Data API-sleutel vereist<br>voor koersgrafieken.
             </p>
-            <button class="btn-setup" data-action="open-modal" style="font-size:0.68rem;padding:0.3rem 0.8rem;">Sleutel toevoegen</button>
+            <button class="btn-setup" data-action="open-modal" style="font-size:0.68rem;padding:0.3rem 0.8rem;">Add key</button>
           </div>
         </div>`;
         return;
@@ -1014,7 +1014,7 @@
         const fhQuote = cacheGet(fhCk);
 
         const reason = bestPct !== -Infinity
-          ? `${fmtPct(bestPct)} koersbeweging vandaag`
+          ? `${fmtPct(bestPct)} price move today`
           : null;
 
         el.innerHTML = renderFeaturedStock(tsData, fhQuote, reason, bestNote);
@@ -1022,7 +1022,7 @@
         el.innerHTML = `<div class="featured-stock">
           <div class="featured-stock-label">Aandeel van de dag</div>
           <div class="error-card" style="margin-top:0.8rem;border-left-color:#5a4a3a;">
-            <div class="error-card-title" style="color:#7a6050;">Grafiek niet beschikbaar</div>
+            <div class="error-card-title" style="color:#7a6050;">Chart unavailable</div>
             <div class="error-card-msg">${esc(e.message)}</div>
             <button class="error-card-action" data-action="retry-stock">Opnieuw proberen</button>
           </div>
