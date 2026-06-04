@@ -921,7 +921,19 @@
       leadEl.innerHTML = renderLeadArticle(articles[0]);
 
       const gridEl = document.getElementById('article-grid-container');
-      gridEl.innerHTML = articles.slice(1, 5).map((a, i) => renderArticleCard(a, i)).join('');
+
+      // Bouw grid van 8 artikelen: garandeer minimaal 2 NOS-artikelen over NL/EU bedrijfsleven
+      const nosArticles = articles
+        .filter(a => a.source === 'NOS' || a.source === 'nos.nl' || a.source === 'FD' || a.source === 'fd.nl')
+        .filter(a => a !== articles[0])
+        .slice(0, 2);
+
+      const otherArticles = articles
+        .filter(a => !nosArticles.includes(a) && a !== articles[0])
+        .slice(0, 6);
+
+      const gridArticles = [...nosArticles, ...otherArticles].slice(0, 8);
+      gridEl.innerHTML = gridArticles.map((a, i) => renderArticleCard(a, i)).join('');
 
       document.getElementById('quote-container').innerHTML = renderQuote(articles[0]);
 
