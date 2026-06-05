@@ -170,24 +170,51 @@
     return result;
   }
 
+  async function fetchFrankfurterForex() {
+    const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
+    if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.rates || !data.rates.USD) throw new Error('No EUR/USD data from Frankfurter');
+    return { price: data.rates.USD, symbol: 'EUR/USD' };
+  }
+
   async function fetchAVForex(apiKey) {
     const ck = 'av_eurusd';
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    const url = IS_LIVE
-      ? `/api/forex`
-      : `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${encodeURIComponent(apiKey)}`;
+    let result = null;
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
-    const data = await res.json();
+    // Try Alpha Vantage first (real-time), fall back to Frankfurter (ECB, no key needed)
+    if (IS_LIVE) {
+      try {
+        const res = await fetch('/api/forex');
+        if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
+        const data = await res.json();
+        if (data['Note'] || data['Information']) throw new Error('rate limit');
+        const rate = data['Realtime Currency Exchange Rate'];
+        if (!rate) throw new Error('no data');
+        result = { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
+      } catch {
+        result = await fetchFrankfurterForex();
+      }
+    } else if (apiKey) {
+      try {
+        const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
+        const data = await res.json();
+        if (data['Note'] || data['Information']) throw new Error('rate limit');
+        const rate = data['Realtime Currency Exchange Rate'];
+        if (!rate) throw new Error('no data');
+        result = { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
+      } catch {
+        result = await fetchFrankfurterForex();
+      }
+    } else {
+      result = await fetchFrankfurterForex();
+    }
 
-    if (data['Note'] || data['Information']) throw new Error('Alpha Vantage rate limit reached — please try again later');
-    const rate = data['Realtime Currency Exchange Rate'];
-    if (!rate) throw new Error('No forex data from Alpha Vantage');
-
-    const result = { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
     cacheSet(ck, result, 300_000);
     return result;
   }
