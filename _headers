@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.coingecko.com; img-src 'self' data:; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://finnhub.io https://www.alphavantage.co https://api.twelvedata.com https://api.coingecko.com https://api.frankfurter.app https://open.er-api.com https://feeds.reuters.com https://search.cnbc.com https://feeds.bbci.co.uk https://www.theguardian.com https://feeds.marketwatch.com https://feeds.nos.nl https://fd.nl https://corsproxy.io https://api.allorigins.win; img-src 'self' data:; frame-ancestors 'none'
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

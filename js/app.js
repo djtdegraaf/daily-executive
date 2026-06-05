@@ -311,36 +311,27 @@
     let xml = null;
     let lastErr = null;
 
-    if (IS_LIVE) {
-      // Op de live site: gebruik onze eigen Cloudflare Function proxy
-      // Betrouwbaar, snel, geen rate limits van derden
+    const encoded = encodeURIComponent(feedUrl);
+    const proxies = [
+      // Own proxy first (works when Cloudflare Pages Functions are available)
+      { url: `/api/rss?url=${encoded}`, json: false },
+      // Public CORS proxies as fallback
+      { url: `https://corsproxy.io/?url=${encoded}`, json: false },
+      { url: `https://api.allorigins.win/get?url=${encoded}`, json: true },
+    ];
+
+    for (const proxy of proxies) {
       try {
-        const res = await fetchWithTimeout(`/api/rss?url=${encodeURIComponent(feedUrl)}`);
-        if (!res.ok) throw new Error(`RSS proxy HTTP ${res.status}`);
-        xml = await res.text();
+        if (proxy.json) {
+          xml = await fetchRSSViaProxy(proxy.url);
+        } else {
+          const res = await fetchWithTimeout(proxy.url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          xml = await res.text();
+        }
+        if (xml) break;
       } catch (e) {
         lastErr = e;
-      }
-    } else {
-      // Lokaal: val terug op externe CORS-proxies
-      const encoded = encodeURIComponent(feedUrl);
-      const proxies = [
-        `https://corsproxy.io/?url=${encoded}`,
-        `https://api.allorigins.win/get?url=${encoded}`,
-      ];
-      for (const proxyUrl of proxies) {
-        try {
-          if (proxyUrl.includes('allorigins')) {
-            xml = await fetchRSSViaProxy(proxyUrl);
-          } else {
-            const res = await fetchWithTimeout(proxyUrl);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            xml = await res.text();
-          }
-          if (xml) break;
-        } catch (e) {
-          lastErr = e;
-        }
       }
     }
 
