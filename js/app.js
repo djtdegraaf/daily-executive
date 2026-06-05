@@ -170,53 +170,64 @@
     return result;
   }
 
-  async function fetchFrankfurterForex() {
-    const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
-    if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data.rates || !data.rates.USD) throw new Error('No EUR/USD data from Frankfurter');
-    return { price: data.rates.USD, symbol: 'EUR/USD' };
-  }
-
   async function fetchAVForex(apiKey) {
     const ck = 'av_eurusd';
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    let result = null;
+    const sources = [];
 
-    // Try Alpha Vantage first (real-time), fall back to Frankfurter (ECB, no key needed)
+    // Source 1: Alpha Vantage (proxy on live, direct on local with key)
     if (IS_LIVE) {
-      try {
+      sources.push(async () => {
         const res = await fetch('/api/forex');
-        if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`AV HTTP ${res.status}`);
         const data = await res.json();
         if (data['Note'] || data['Information']) throw new Error('rate limit');
         const rate = data['Realtime Currency Exchange Rate'];
         if (!rate) throw new Error('no data');
-        result = { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
-      } catch {
-        result = await fetchFrankfurterForex();
-      }
+        return { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
+      });
     } else if (apiKey) {
-      try {
+      sources.push(async () => {
         const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${encodeURIComponent(apiKey)}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`AV HTTP ${res.status}`);
         const data = await res.json();
         if (data['Note'] || data['Information']) throw new Error('rate limit');
         const rate = data['Realtime Currency Exchange Rate'];
         if (!rate) throw new Error('no data');
-        result = { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
-      } catch {
-        result = await fetchFrankfurterForex();
-      }
-    } else {
-      result = await fetchFrankfurterForex();
+        return { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
+      });
     }
 
-    cacheSet(ck, result, 300_000);
-    return result;
+    // Source 2: Frankfurter (ECB, no key)
+    sources.push(async () => {
+      const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
+      if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.rates?.USD) throw new Error('no data');
+      return { price: data.rates.USD, symbol: 'EUR/USD' };
+    });
+
+    // Source 3: Open Exchange Rates (no key, free tier)
+    sources.push(async () => {
+      const res = await fetch('https://open.er-api.com/v6/latest/EUR');
+      if (!res.ok) throw new Error(`OER HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.rates?.USD) throw new Error('no data');
+      return { price: data.rates.USD, symbol: 'EUR/USD' };
+    });
+
+    for (const source of sources) {
+      try {
+        const result = await source();
+        cacheSet(ck, result, 300_000);
+        return result;
+      } catch { /* try next source */ }
+    }
+
+    throw new Error('EUR/USD unavailable');
   }
 
   async function fetchBitcoin() {
