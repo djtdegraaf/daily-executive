@@ -27,6 +27,42 @@
   });
 
   // ═══════════════════════════════════════════════
+  // AI INSIGHT — Anthropic API
+  // ═══════════════════════════════════════════════
+
+  const ANTHROPIC_API_KEY = 'YOUR_API_KEY';
+
+  const aiArticleStore = new Map();
+  let   aiArticleSeq   = 0;
+
+  async function fetchAIInsight(title, desc) {
+    if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'YOUR_API_KEY') {
+      throw new Error('No API key configured — add your Anthropic key to app.js');
+    }
+    const content = `${title}\n\n${desc}`;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 220,
+        system:     'You are a financial explainer for Daily Executive, a Dutch financial briefing website. When given a financial news article, explain in exactly 2-3 sentences what this means for an ordinary Dutch investor or professional. Use simple language, no jargon. Always mention if this is good, bad, or neutral for investors. Respond in English.',
+        messages:   [{ role: 'user', content }],
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${res.status}`);
+    }
+    const data = await res.json();
+    return data.content[0].text.trim();
+  }
+
+  // ═══════════════════════════════════════════════
   // CONFIGURATION & STORAGE
   // ═══════════════════════════════════════════════
 
@@ -429,26 +465,30 @@
   }
 
   function renderLeadArticle(article) {
-    const ago = timeAgo(article.pubDate);
-    const excerpt = article.desc.length > 300 ? article.desc.slice(0, 300) + '…' : article.desc;
-    // Use first ~180 chars as deck, rest as body (if available)
+    const ago  = timeAgo(article.pubDate);
     const deck = article.desc.length > 180 ? article.desc.slice(0, 180) + '…' : article.desc;
+    const aid  = ++aiArticleSeq;
+    aiArticleStore.set(String(aid), article);
 
     return `<article class="lead-article fade-in">
       <div class="article-meta">
-        <span class="category-tag">${article.category || 'Nieuws'}</span>
+        <span class="category-tag">${article.category || 'News'}</span>
         <span class="source-tag">${article.source}</span>
         <span class="article-time">${ago}</span>
       </div>
       <h1 class="lead-headline"><a href="${esc(article.link)}" target="_blank" rel="noopener">${esc(article.title)}</a></h1>
       <p class="lead-deck">${esc(deck)}</p>
-      <a href="${esc(article.link)}" target="_blank" rel="noopener" class="read-more">Volledig artikel lezen →</a>
+      <a href="${esc(article.link)}" target="_blank" rel="noopener" class="read-more">Read full article →</a>
+      <button class="ai-insight-btn" data-aid="${aid}">✦ What does this mean for me?</button>
     </article>`;
   }
 
   function renderArticleCard(article, idx) {
-    const ago = timeAgo(article.pubDate);
+    const ago     = timeAgo(article.pubDate);
     const excerpt = article.desc.length > 160 ? article.desc.slice(0, 160) + '…' : article.desc;
+    const aid     = ++aiArticleSeq;
+    aiArticleStore.set(String(aid), article);
+
     return `<article class="article-card fade-in" style="animation-delay:${idx * 0.08}s">
       <div class="article-meta">
         <span class="source-badge">${esc(article.source)}</span>
@@ -456,6 +496,7 @@
       </div>
       <h2 class="card-headline"><a href="${esc(article.link)}" target="_blank" rel="noopener">${esc(article.title)}</a></h2>
       <p class="card-excerpt">${esc(excerpt)}</p>
+      <button class="ai-insight-btn" data-aid="${aid}">✦ What does this mean for me?</button>
     </article>`;
   }
 
@@ -1123,6 +1164,40 @@
         if (e.target.matches('[data-action="retry-insider"]')) {
           const sym = document.getElementById('insider-symbol')?.value || 'AAPL';
           loadInsiderWidget(sym);
+        }
+      });
+
+      // AI Insight knoppen
+      document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.ai-insight-btn');
+        if (!btn || btn.disabled) return;
+
+        const article = aiArticleStore.get(btn.dataset.aid);
+        if (!article) return;
+
+        btn.disabled = true;
+
+        const loading = document.createElement('div');
+        loading.className = 'ai-insight-loading';
+        loading.innerHTML = '<span class="ai-dots"><span>.</span><span>.</span><span>.</span></span>&nbsp; Analysing article…';
+        btn.insertAdjacentElement('afterend', loading);
+
+        try {
+          const insight = await fetchAIInsight(article.title, article.desc);
+          loading.remove();
+          const block = document.createElement('div');
+          block.className = 'ai-insight-block';
+          block.innerHTML = `<div class="ai-insight-label">AI Insight</div><p class="ai-insight-text">${esc(insight)}</p>`;
+          btn.insertAdjacentElement('afterend', block);
+          btn.remove();
+        } catch (err) {
+          loading.remove();
+          btn.disabled = false;
+          const errEl = document.createElement('div');
+          errEl.className = 'ai-insight-error';
+          errEl.textContent = err.message || 'Analysis unavailable';
+          btn.insertAdjacentElement('afterend', errEl);
+          setTimeout(() => errEl.remove(), 5000);
         }
       });
 
