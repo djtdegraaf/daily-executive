@@ -145,29 +145,29 @@
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    // Op de live site: gebruik server-side proxy (sleutel verborgen voor bezoekers)
-    // Lokaal: gebruik directe API-aanroep met localStorage-sleutel
-    const url = IS_LIVE
-      ? `/api/quote?symbol=${encodeURIComponent(symbol)}`
-      : `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`;
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Finnhub HTTP ${res.status}`);
-    const data = await res.json();
-
-    if (data.error) throw new Error(`Finnhub: ${data.error}`);
-    if (!data.c || (data.c === 0 && data.pc === 0)) throw new Error(`No data for ${symbol}`);
-
-    const result = {
-      price: data.c,
-      change: data.d,
-      changePct: data.dp,
-      high: data.h,
-      low: data.l,
-      prevClose: data.pc,
+    const parseQuote = (data) => {
+      if (data.error) throw new Error(`Finnhub: ${data.error}`);
+      if (!data.c || (data.c === 0 && data.pc === 0)) throw new Error(`No data for ${symbol}`);
+      return { price: data.c, change: data.d, changePct: data.dp, high: data.h, low: data.l, prevClose: data.pc };
     };
-    cacheSet(ck, result, 60_000);
-    return result;
+
+    const sources = [];
+    if (IS_LIVE) sources.push(async () => {
+      const res = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
+      if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
+      return parseQuote(await res.json());
+    });
+    if (apiKey) sources.push(async () => {
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`);
+      if (!res.ok) throw new Error(`Finnhub HTTP ${res.status}`);
+      return parseQuote(await res.json());
+    });
+    if (!sources.length) throw new Error(`No Finnhub API key configured`);
+
+    for (const src of sources) {
+      try { const result = await src(); cacheSet(ck, result, 60_000); return result; } catch { /* try next */ }
+    }
+    throw new Error(`No data for ${symbol}`);
   }
 
   async function fetchAVForex(apiKey) {
@@ -251,12 +251,19 @@
     const hit = cacheGet(ck);
     if (hit) return hit;
 
-    const url = IS_LIVE
-      ? `/api/timeseries?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31`
-      : `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31&apikey=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Twelve Data HTTP ${res.status}`);
-    const data = await res.json();
+    let data = null;
+    if (IS_LIVE) {
+      try {
+        const res = await fetch(`/api/timeseries?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31`);
+        if (res.ok) data = await res.json();
+      } catch { /* fall through */ }
+    }
+    if (!data && apiKey) {
+      const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=31&apikey=${encodeURIComponent(apiKey)}`);
+      if (!res.ok) throw new Error(`Twelve Data HTTP ${res.status}`);
+      data = await res.json();
+    }
+    if (!data) throw new Error('Twelve Data: no API key configured');
 
     if (data.status === 'error') throw new Error(`Twelve Data: ${data.message}`);
     if (!data.values || data.values.length < 2) throw new Error('Onvoldoende historische data');
@@ -329,7 +336,9 @@
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           xml = await res.text();
         }
-        if (xml) break;
+        if (xml && xml.trim().startsWith('<')) break;
+        xml = null;
+        throw new Error('Response is not XML');
       } catch (e) {
         lastErr = e;
       }
