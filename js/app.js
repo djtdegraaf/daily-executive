@@ -364,17 +364,27 @@
     const encoded = encodeURIComponent(feedUrl);
 
     // Try all proxies in parallel — take the first one that returns valid XML
-    async function tryProxy(proxy) {
-      let xml;
-      if (proxy.json) {
-        xml = await fetchRSSViaProxy(proxy.url);
-      } else {
-        const res = await fetchWithTimeout(proxy.url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        xml = await res.text();
+    // AbortController stays armed through body read so timeout covers headers + body
+    async function tryProxy(proxy, timeoutMs = 5000) {
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        let xml;
+        if (proxy.json) {
+          const res = await fetch(proxy.url, { signal: ctrl.signal });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          xml = json.contents || json.data || json.body || '';
+        } else {
+          const res = await fetch(proxy.url, { signal: ctrl.signal });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          xml = await res.text();
+        }
+        if (!xml || !xml.trim().startsWith('<')) throw new Error('Response is not XML');
+        return xml;
+      } finally {
+        clearTimeout(timer);
       }
-      if (!xml || !xml.trim().startsWith('<')) throw new Error('Response is not XML');
-      return xml;
     }
 
     const proxies = [

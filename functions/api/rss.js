@@ -5,6 +5,7 @@ export async function onRequestGet({ request }) {
 
   const res = await fetch(feedUrl, {
     headers: { 'User-Agent': 'Daily Executive RSS Reader/1.0' },
+    signal: AbortSignal.timeout(6000),
   });
   if (!res.ok) return new Response(`Feed error ${res.status}`, { status: res.status });
 
