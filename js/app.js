@@ -337,7 +337,7 @@
     return data;
   }
 
-  async function fetchWithTimeout(url, timeoutMs = 8000) {
+  async function fetchWithTimeout(url, timeoutMs = 4000) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
@@ -1057,16 +1057,6 @@
             <div class="error-card-title">Articles unavailable</div>
             <div class="error-card-msg">None of the ${FEEDS.length} sources could be loaded.</div>
           </div>`;
-        document.getElementById('briefing-list').innerHTML =
-          `<li><span class="bullet-icon">▸</span><span style="color:var(--muted);font-style:italic">No news available</span></li>`;
-        document.getElementById('quote-container').innerHTML =
-          `<div class="quote-block">
-            <div class="quote-label">Featured News</div>
-            <p class="quote-text" style="font-size:0.9rem;font-family:'DM Sans',sans-serif;font-style:normal;color:var(--muted)">
-              News temporarily unavailable.
-            </p>
-          </div>`;
-
         return;
       }
 
@@ -1087,14 +1077,6 @@
         const gridArticles = [...nosArticles, ...otherArticles].slice(0, 8);
         gridEl.innerHTML = gridArticles.map((a, i) => renderArticleCard(a, i)).join('');
       }
-
-      document.getElementById('quote-container')?.innerHTML !== undefined &&
-        (document.getElementById('quote-container').innerHTML = renderQuote(articles[0]));
-
-      // Dagbriefing: max 10 items, mix van bronnen
-      const briefingItems = articles.slice(0, 10);
-      document.getElementById('briefing-list').innerHTML =
-        briefingItems.map(a => renderBriefingItem(a)).join('');
 
     },
 
@@ -1356,9 +1338,9 @@
         const extras = [];
 
         if (PAGE.page === 'markets') {
-          extras.push(this.loadMarketsPage());
+          extras.push(this.loadMarketsPage(), this.loadFeaturedStock());
         } else if (PAGE.page === 'portfolio') {
-          extras.push(this.loadPortfolioPage());
+          extras.push(this.loadPortfolioPage(), this.loadFeaturedStock());
         } else {
           extras.push(this.loadNews(), this.loadFeaturedStock());
           if (PAGE.page === 'bedrijven' || PAGE.page === 'companies') {
@@ -1366,12 +1348,6 @@
             extras.push(loadInsiderWidget(sym));
             extras.push(this.loadEarningsWidget());
           }
-        }
-
-        // All pages: sidebar briefing & quote populated via loadNews above (or via news on non-article pages)
-        // For markets/portfolio pages, news still runs to populate briefing list
-        if (PAGE.page === 'markets' || PAGE.page === 'portfolio') {
-          extras.push(this.loadNews());
         }
 
         await Promise.allSettled(extras);
