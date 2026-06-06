@@ -361,36 +361,35 @@
   }
 
   async function fetchRSS(feedUrl) {
-    let xml = null;
-    let lastErr = null;
-
     const encoded = encodeURIComponent(feedUrl);
-    const proxies = [
-      // Own proxy first (works when Cloudflare Pages Functions are available)
-      { url: `/api/rss?url=${encoded}`, json: false },
-      // Public CORS proxies as fallback
-      { url: `https://corsproxy.io/?url=${encoded}`, json: false },
-      { url: `https://api.allorigins.win/get?url=${encoded}`, json: true },
-    ];
 
-    for (const proxy of proxies) {
-      try {
-        if (proxy.json) {
-          xml = await fetchRSSViaProxy(proxy.url);
-        } else {
-          const res = await fetchWithTimeout(proxy.url);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          xml = await res.text();
-        }
-        if (xml && xml.trim().startsWith('<')) break;
-        xml = null;
-        throw new Error('Response is not XML');
-      } catch (e) {
-        lastErr = e;
+    // Try all proxies in parallel — take the first one that returns valid XML
+    async function tryProxy(proxy) {
+      let xml;
+      if (proxy.json) {
+        xml = await fetchRSSViaProxy(proxy.url);
+      } else {
+        const res = await fetchWithTimeout(proxy.url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        xml = await res.text();
       }
+      if (!xml || !xml.trim().startsWith('<')) throw new Error('Response is not XML');
+      return xml;
     }
 
-    if (!xml) throw new Error(`RSS unavailable: ${lastErr?.message || 'unknown error'}`);
+    const proxies = [
+      { url: `/api/rss?url=${encoded}`,                          json: false },
+      { url: `https://corsproxy.io/?url=${encoded}`,             json: false },
+      { url: `https://api.allorigins.win/get?url=${encoded}`,    json: true  },
+    ];
+
+    let xml;
+    try {
+      xml = await Promise.any(proxies.map(p => tryProxy(p)));
+    } catch {
+      throw new Error('RSS unavailable: all proxies failed');
+    }
+    if (!xml) throw new Error('RSS unavailable: no valid XML received');
 
     let doc = new DOMParser().parseFromString(xml, 'application/xml');
     if (doc.querySelector('parsererror')) {
