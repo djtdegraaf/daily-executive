@@ -925,6 +925,26 @@
         return true;
       });
 
+      // ── 70% international / 30% NL mix ───────────
+      {
+        const intl = articles.filter(a => a.lang !== 'nl');
+        const nl   = articles.filter(a => a.lang === 'nl');
+        const total = Math.min(articles.length, 9); // lead + 8 grid cards
+        const nlSlots  = Math.round(total * 0.30);
+        const intlSlots = total - nlSlots;
+        const mixed = [];
+        let ii = 0, ni = 0;
+        while (mixed.length < total) {
+          if (ii < intlSlots && ii < intl.length)  mixed.push(intl[ii++]);
+          if (ni < nlSlots   && ni < nl.length)    mixed.push(nl[ni++]);
+          if (ii >= intl.length && ni >= nl.length) break;
+        }
+        // fill any remaining slots with whatever is left
+        const used = new Set(mixed);
+        articles.filter(a => !used.has(a)).forEach(a => mixed.length < total && mixed.push(a));
+        articles = mixed;
+      }
+
       // ── Renderen ──────────────────────────────────
       const leadEl = document.getElementById('lead-article-container');
 
