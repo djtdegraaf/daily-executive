@@ -3,16 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Daily Executive — AEX &amp; Dutch Markets</title>
+  <title>Companies — Daily Executive</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=202606042248" />
+  <link rel="stylesheet" href="css/styles.css?v=202606061002" />
 </head>
 <body>
 
 <div id="setup-banner" class="setup-banner hidden">
-  <div class="setup-banner-text"><strong>⚙ Live market data requires API keys</strong> — Finnhub and Alpha Vantage are available for free.</div>
+  <div class="setup-banner-text">
+    <strong>Live market data requires API keys</strong>
+    — Finnhub and Alpha Vantage are free. CoinGecko works without a key.
+  </div>
   <div class="setup-banner-actions">
     <button class="btn-setup">Set up keys</button>
     <button class="btn-dismiss">Dismiss</button>
@@ -22,20 +25,26 @@
 <div id="api-modal" class="modal-overlay hidden">
   <div class="modal">
     <h2 class="modal-title">Configure API Keys</h2>
-    <p class="modal-subtitle">Your keys are stored locally and never transmitted.</p>
+    <p class="modal-subtitle">All market data is fetched from official APIs. Your keys are stored locally (localStorage) and never transmitted.</p>
     <div class="form-group">
-      <label class="form-label" for="input-finnhub">Finnhub &nbsp;<a href="https://finnhub.io/register" target="_blank" rel="noopener">Free →</a></label>
+      <label class="form-label" for="input-finnhub">Finnhub API Key &nbsp;<a href="https://finnhub.io/register" target="_blank" rel="noopener">Register for free →</a></label>
       <input id="input-finnhub" type="password" class="form-input" placeholder="e.g. d1abc23de4fg5hi6jk7..." autocomplete="off" />
+      <p class="form-note">Stocks &amp; earnings calendar — free tier: 60 req/min</p>
     </div>
     <div class="form-group">
-      <label class="form-label" for="input-av">Alpha Vantage &nbsp;<a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Free →</a></label>
+      <label class="form-label" for="input-av">Alpha Vantage API Key &nbsp;<a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Register for free →</a></label>
       <input id="input-av" type="password" class="form-input" placeholder="e.g. ABCDEFGHIJ123456..." autocomplete="off" />
+      <p class="form-note">EUR/USD exchange rate — free tier: 25 req/day</p>
     </div>
     <div class="form-group">
-      <label class="form-label" for="input-twelve">Twelve Data &nbsp;<a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">Free →</a></label>
+      <label class="form-label" for="input-twelve">Twelve Data API Key &nbsp;<a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">Register for free →</a></label>
       <input id="input-twelve" type="password" class="form-input" placeholder="e.g. abc123def456..." autocomplete="off" />
+      <p class="form-note">Price charts — free tier: 800 req/day</p>
     </div>
-    <div class="form-group"><label class="form-label">CoinGecko &amp; RSS</label><p class="form-note ok">✓ No key required</p></div>
+    <div class="form-group">
+      <label class="form-label">CoinGecko &amp; News (RSS)</label>
+      <p class="form-note ok">✓ No key required — works directly</p>
+    </div>
     <div class="modal-actions">
       <button class="btn-primary">Save &amp; Load</button>
       <button class="btn-secondary">Cancel</button>
@@ -55,8 +64,9 @@
 
 <header class="site-header">
   <div class="logo">Daily <em>Executive</em></div>
-  <p class="tagline">AEX &amp; Dutch Markets &nbsp;·&nbsp; Euronext Amsterdam</p>
+  <p class="tagline">Your daily market briefing &nbsp;·&nbsp; Global Markets</p>
 </header>
+
 <nav class="primary-nav" aria-label="Main navigation">
   <ul>
     <li><a href="index.html">Today</a></li>
@@ -78,21 +88,34 @@
 <div class="container">
   <div class="content-grid">
     <main>
-      <div class="section-label">AEX News</div>
+      <div class="section-label">Earnings This Week</div>
+      <div id="earnings-container">
+        <div class="earnings-empty" style="font-style:normal;">
+          <div class="shimmer shimmer-line" style="width:90%;height:0.9em;margin-bottom:0.5rem;"></div>
+          <div class="shimmer shimmer-line" style="width:80%;height:0.9em;margin-bottom:0.5rem;"></div>
+          <div class="shimmer shimmer-line" style="width:85%;height:0.9em;"></div>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:2rem">Lead Story</div>
       <div id="lead-article-container">
         <div class="lead-article">
           <div class="shimmer shimmer-line" style="width:60%;margin-bottom:1rem;"></div>
           <div class="shimmer shimmer-line" style="width:90%;height:2em;margin-bottom:0.8rem;"></div>
+          <div class="shimmer shimmer-line" style="width:75%;height:2em;margin-bottom:1.2rem;"></div>
           <div class="shimmer shimmer-line" style="width:100%;"></div>
-          <div class="shimmer shimmer-line" style="width:88%;"></div>
+          <div class="shimmer shimmer-line" style="width:95%;"></div>
         </div>
       </div>
-      <div class="section-label" style="margin-top:2.4rem;">Dutch Companies</div>
       <div id="article-grid-container" class="article-grid">
         <div class="article-card"><div class="shimmer shimmer-line" style="width:90%;"></div><div class="shimmer shimmer-line" style="width:75%;"></div></div>
         <div class="article-card"><div class="shimmer shimmer-line" style="width:85%;"></div><div class="shimmer shimmer-line" style="width:70%;"></div></div>
         <div class="article-card"><div class="shimmer shimmer-line" style="width:88%;"></div><div class="shimmer shimmer-line" style="width:80%;"></div></div>
         <div class="article-card"><div class="shimmer shimmer-line" style="width:92%;"></div><div class="shimmer shimmer-line" style="width:68%;"></div></div>
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:86%;"></div><div class="shimmer shimmer-line" style="width:72%;"></div></div>
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:91%;"></div><div class="shimmer shimmer-line" style="width:77%;"></div></div>
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:84%;"></div><div class="shimmer shimmer-line" style="width:65%;"></div></div>
+        <div class="article-card"><div class="shimmer shimmer-line" style="width:89%;"></div><div class="shimmer shimmer-line" style="width:71%;"></div></div>
       </div>
     </main>
 
@@ -102,13 +125,15 @@
           <div class="market-card-title">Markets</div>
           <div class="market-card-time" id="market-time">–</div>
         </div>
-        <table class="market-table"><tbody id="market-tbody">
-          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
-          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
-          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
-          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
-          <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
-        </tbody></table>
+        <table class="market-table">
+          <tbody id="market-tbody">
+            <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+            <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+            <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+            <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+            <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
+          </tbody>
+        </table>
       </div>
 
       <div id="featured-stock-container">
@@ -116,8 +141,8 @@
           <div class="featured-stock-label">Stock of the Day</div>
           <div style="margin-top:0.8rem">
             <div class="shimmer market-shimmer" style="width:60%;height:14px;margin-bottom:0.5rem;"></div>
+            <div class="shimmer market-shimmer" style="width:40%;height:24px;margin-bottom:0.6rem;"></div>
             <div class="shimmer market-shimmer" style="width:100%;height:90px;margin-bottom:0.5rem;"></div>
-            <div class="shimmer market-shimmer" style="width:100%;height:32px;"></div>
           </div>
         </div>
       </div>
@@ -131,8 +156,9 @@
       </div>
 
       <div class="briefing-card">
-        <h3 class="briefing-title"><span>◆</span> AEX Briefing</h3>
+        <h3 class="briefing-title"><span>◆</span> Daily Briefing</h3>
         <ul class="briefing-list" id="briefing-list">
+          <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
           <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
           <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
           <li><span class="bullet-icon">▸</span><div class="shimmer shimmer-line" style="flex:1;height:0.9em;"></div></li>
@@ -146,37 +172,61 @@
 <footer>
   <div class="footer-inner">
     <div class="footer-top">
-      <div><div class="footer-logo">Daily <em>Executive</em></div><p class="footer-desc">The professional market briefing for executives and policy makers.</p></div>
-      <div><div class="footer-col-title">Sections</div><ul class="footer-links"><li><a href="index.html">Today</a></li><li><a href="aex.html">AEX &amp; Markets</a></li><li><a href="bedrijven.html">Companies</a></li><li><a href="macro.html">Macroeconomics</a></li><li><a href="geopolitiek.html">Geopolitics</a></li></ul></div>
-      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="#">About us</a></li><li><a href="#">Privacy</a></li><li><a href="#">Contact</a></li></ul></div>
+      <div>
+        <div class="footer-logo">Daily <em>Executive</em></div>
+        <p class="footer-desc">The professional market briefing for executives, portfolio managers and policy makers. Every day before the opening bell.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Sections</div>
+        <ul class="footer-links">
+          <li><a href="index.html">Today</a></li>
+          <li><a href="markets.html">Markets</a></li>
+          <li><a href="companies.html">Companies</a></li>
+          <li><a href="deals.html">Deals &amp; M&amp;A</a></li>
+          <li><a href="geopolitics.html">Geopolitics</a></li>
+          <li><a href="portfolio.html">My Portfolio</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Company</div>
+        <ul class="footer-links">
+          <li><a href="#">About us</a></li>
+          <li><a href="#">Editorial</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
     </div>
     <div class="footer-bottom">
       <span class="footer-copy">&copy; 2026 Daily Executive B.V. &nbsp;·&nbsp; Amsterdam, Netherlands</span>
       <div class="footer-badges"><span class="badge">GDPR Compliant</span><span class="badge">Live Data</span></div>
     </div>
-    <div class="data-disclaimer">Market data: Finnhub, Alpha Vantage, CoinGecko. News: NOS, FD, Reuters. For informational purposes only, not investment advice.</div>
+    <div class="data-disclaimer">
+      News: FD, NOS Economie, Reuters. Earnings data: Finnhub. For informational purposes only, not investment advice.
+    </div>
   </div>
 </footer>
 
 <script>
   window.PAGE_CONFIG = {
-    page:           'aex',
-    title:          'Daily Executive — AEX & Dutch Markets',
-    activeNav:      'AEX',
+    page:      'companies',
+    title:     'Companies — Daily Executive',
+    activeNav: 'Companies',
     feeds: [
       'https://feeds.nos.nl/nosnieuwseconomie',
       'https://fd.nl/?rss',
       'https://feeds.reuters.com/reuters/businessNews',
-      'https://feeds.reuters.com/reuters/financialsNews',
     ],
     filterKeywords: [
-      'aex','amsterdam','euronext','nederland','dutch','netherlands',
-      'asml','shell','ing','heineken','unilever','philips','akzonobel',
-      'aegon','abn amro','wolters','randstad','arcelor','nn group',
-      'nxp','arcelormittal','just eat','adyen','imcd','be semiconductor',
+      'earnings','profit','revenue','acquisition','merger','ipo','ceo','cfo',
+      'quarterly','results','deal','buyout','dividend','shares','stock',
+      'asml','shell','philips','unilever','ing','abn','heineken','akzo',
+      'stellantis','airbus','siemens','volkswagen','bmw','sap',
     ],
+    leadLabel: 'Featured Company News',
+    gridLabel: 'Latest Company News',
   };
 </script>
-<script src="js/app.js?v=202606061001"></script>
+<script src="js/app.js?v=202606061002"></script>
 </body>
 </html>

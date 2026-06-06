@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Daily Executive — Your Daily Market Briefing</title>
+  <title>Markets — Daily Executive</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=202606042248" />
+  <link rel="stylesheet" href="css/styles.css?v=202606061002" />
 </head>
 <body>
 
-<!-- ── API SETUP BANNER ──────────────────────────────── -->
 <div id="setup-banner" class="setup-banner hidden">
   <div class="setup-banner-text">
-    <strong>⚙ Live market data requires API keys</strong>
+    <strong>Live market data requires API keys</strong>
     — Finnhub and Alpha Vantage are free. CoinGecko works without a key.
   </div>
   <div class="setup-banner-actions">
@@ -23,7 +22,6 @@
   </div>
 </div>
 
-<!-- ── API KEYS MODAL ────────────────────────────────── -->
 <div id="api-modal" class="modal-overlay hidden">
   <div class="modal">
     <h2 class="modal-title">Configure API Keys</h2>
@@ -31,7 +29,7 @@
     <div class="form-group">
       <label class="form-label" for="input-finnhub">Finnhub API Key &nbsp;<a href="https://finnhub.io/register" target="_blank" rel="noopener">Register for free →</a></label>
       <input id="input-finnhub" type="password" class="form-input" placeholder="e.g. d1abc23de4fg5hi6jk7..." autocomplete="off" />
-      <p class="form-note">Stocks, indices (AEX, DAX, S&amp;P 500) — free tier: 60 req/min</p>
+      <p class="form-note">Stocks &amp; indices — free tier: 60 req/min</p>
     </div>
     <div class="form-group">
       <label class="form-label" for="input-av">Alpha Vantage API Key &nbsp;<a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Register for free →</a></label>
@@ -41,7 +39,7 @@
     <div class="form-group">
       <label class="form-label" for="input-twelve">Twelve Data API Key &nbsp;<a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">Register for free →</a></label>
       <input id="input-twelve" type="password" class="form-input" placeholder="e.g. abc123def456..." autocomplete="off" />
-      <p class="form-note">Price charts (30-day time series) — free tier: 800 req/day</p>
+      <p class="form-note">Price charts — free tier: 800 req/day</p>
     </div>
     <div class="form-group">
       <label class="form-label">CoinGecko &amp; News (RSS)</label>
@@ -55,7 +53,6 @@
   </div>
 </div>
 
-<!-- ── TOPBAR ─────────────────────────────────────────── -->
 <div class="topbar">
   <div class="topbar-date" id="topbar-date">–</div>
   <div class="topbar-links"></div>
@@ -65,13 +62,11 @@
   </div>
 </div>
 
-<!-- ── HEADER ──────────────────────────────────────────── -->
 <header class="site-header">
   <div class="logo">Daily <em>Executive</em></div>
   <p class="tagline">Your daily market briefing &nbsp;·&nbsp; Global Markets</p>
 </header>
 
-<!-- ── UPDATE BAR + NAV ───────────────────────────────── -->
 <nav class="primary-nav" aria-label="Main navigation">
   <ul>
     <li><a href="index.html">Today</a></li>
@@ -83,7 +78,6 @@
   </ul>
 </nav>
 
-<!-- ── TICKER ─────────────────────────────────────────── -->
 <div class="ticker-wrap" aria-label="Price ticker">
   <div class="ticker-label">Live</div>
   <div id="ticker-scroll-area">
@@ -91,30 +85,38 @@
   </div>
 </div>
 
-<!-- ── MAIN CONTENT ───────────────────────────────────── -->
 <div class="container">
   <div class="content-grid">
     <main>
-      <div class="section-label">Lead Story</div>
-      <div id="lead-article-container">
-        <div class="lead-article">
-          <div class="shimmer shimmer-line" style="width:60%;margin-bottom:1rem;"></div>
-          <div class="shimmer shimmer-line" style="width:90%;height:2em;margin-bottom:0.8rem;"></div>
-          <div class="shimmer shimmer-line" style="width:75%;height:2em;margin-bottom:1.2rem;"></div>
-          <div class="shimmer shimmer-line" style="width:100%;"></div>
-          <div class="shimmer shimmer-line" style="width:95%;"></div>
-          <div class="shimmer shimmer-line" style="width:88%;"></div>
-        </div>
+      <div class="section-label">Equity Indices</div>
+      <div id="indices-grid" class="mkt-grid">
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:60%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:80%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:55%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:75%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:65%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:70%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:60%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:80%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:50%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:75%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:58%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:72%;height:1.4em;"></div></div>
       </div>
-      <div id="article-grid-container" class="article-grid">
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:90%;"></div><div class="shimmer shimmer-line" style="width:75%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:85%;"></div><div class="shimmer shimmer-line" style="width:70%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:88%;"></div><div class="shimmer shimmer-line" style="width:80%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:92%;"></div><div class="shimmer shimmer-line" style="width:68%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:86%;"></div><div class="shimmer shimmer-line" style="width:72%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:91%;"></div><div class="shimmer shimmer-line" style="width:77%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:84%;"></div><div class="shimmer shimmer-line" style="width:65%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:89%;"></div><div class="shimmer shimmer-line" style="width:71%;"></div></div>
+
+      <div class="section-label" style="margin-top:2.4rem">Currencies</div>
+      <div id="forex-grid" class="mkt-grid">
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:50%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:65%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:50%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:65%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:50%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:65%;height:1.4em;"></div></div>
+      </div>
+
+      <div class="section-label" style="margin-top:2.4rem">Commodities</div>
+      <div id="commodities-grid" class="mkt-grid">
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:55%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:70%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:45%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:68%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:60%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:72%;height:1.4em;"></div></div>
+      </div>
+
+      <div class="section-label" style="margin-top:2.4rem">Crypto</div>
+      <div id="crypto-grid" class="mkt-grid">
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:55%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:70%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:60%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:65%;height:1.4em;"></div></div>
+        <div class="mkt-card"><div class="shimmer shimmer-line" style="width:45%;height:0.8em;margin-bottom:0.5rem;"></div><div class="shimmer shimmer-line" style="width:68%;height:1.4em;"></div></div>
       </div>
     </main>
 
@@ -131,8 +133,6 @@
             <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
             <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
             <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
-            <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
-            <tr class="market-row-loading"><td colspan="3"><div class="market-shimmer"></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -144,7 +144,6 @@
             <div class="shimmer market-shimmer" style="width:60%;height:14px;margin-bottom:0.5rem;"></div>
             <div class="shimmer market-shimmer" style="width:40%;height:24px;margin-bottom:0.6rem;"></div>
             <div class="shimmer market-shimmer" style="width:100%;height:90px;margin-bottom:0.5rem;"></div>
-            <div class="shimmer market-shimmer" style="width:100%;height:32px;"></div>
           </div>
         </div>
       </div>
@@ -171,7 +170,6 @@
   </div>
 </div>
 
-<!-- ── FOOTER ─────────────────────────────────────────── -->
 <footer>
   <div class="footer-inner">
     <div class="footer-top">
@@ -183,10 +181,11 @@
         <div class="footer-col-title">Sections</div>
         <ul class="footer-links">
           <li><a href="index.html">Today</a></li>
-          <li><a href="aex.html">AEX &amp; Markets</a></li>
-          <li><a href="bedrijven.html">Companies</a></li>
-          <li><a href="macro.html">Macroeconomics</a></li>
-          <li><a href="geopolitiek.html">Geopolitics</a></li>
+          <li><a href="markets.html">Markets</a></li>
+          <li><a href="companies.html">Companies</a></li>
+          <li><a href="deals.html">Deals &amp; M&amp;A</a></li>
+          <li><a href="geopolitics.html">Geopolitics</a></li>
+          <li><a href="portfolio.html">My Portfolio</a></li>
         </ul>
       </div>
       <div>
@@ -204,17 +203,17 @@
       <div class="footer-badges"><span class="badge">GDPR Compliant</span><span class="badge">Live Data</span></div>
     </div>
     <div class="data-disclaimer">
-      Market data: Finnhub, Alpha Vantage, CoinGecko. News: Reuters, CNBC, BBC, Guardian, MarketWatch, NOS, FD.
-      For informational purposes only, not investment advice. Prices refreshed every 60 seconds.
+      Market data: Finnhub (indices/commodities), Frankfurter/ECB (forex), CoinGecko (crypto). ETF proxies used for European indices.
+      For informational purposes only, not investment advice.
     </div>
   </div>
 </footer>
 
 <script>
   window.PAGE_CONFIG = {
-    page:      'today',
-    title:     'Daily Executive — Your Daily Market Briefing',
-    activeNav: 'Today',
+    page:      'markets',
+    title:     'Markets — Daily Executive',
+    activeNav: 'Markets',
   };
 </script>
 <script src="js/app.js?v=202606061002"></script>

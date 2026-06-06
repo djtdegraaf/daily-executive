@@ -291,6 +291,52 @@
     return result;
   }
 
+  async function fetchCryptoMulti() {
+    const ck = 'cg_multi';
+    const hit = cacheGet(ck);
+    if (hit) return hit;
+    const url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple&vs_currencies=usd&include_24hr_change=true&precision=2';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
+    const d = await res.json();
+    const result = {
+      bitcoin:  { label: 'Bitcoin',  sub: 'BTC · USD', price: d.bitcoin?.usd,  changePct: d.bitcoin?.usd_24h_change,  decimals: 0 },
+      ethereum: { label: 'Ethereum', sub: 'ETH · USD', price: d.ethereum?.usd, changePct: d.ethereum?.usd_24h_change, decimals: 2 },
+      ripple:   { label: 'XRP',      sub: 'XRP · USD', price: d.ripple?.usd,   changePct: d.ripple?.usd_24h_change,   decimals: 4 },
+    };
+    cacheSet(ck, result, 120_000);
+    return result;
+  }
+
+  async function fetchForexMulti() {
+    const ck = 'ff_eurmulti';
+    const hit = cacheGet(ck);
+    if (hit) return hit;
+    const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,JPY');
+    if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.rates) throw new Error('No rates');
+    cacheSet(ck, data.rates, 300_000);
+    return data.rates;
+  }
+
+  async function fetchEarnings() {
+    const ck = 'fh_earnings';
+    const hit = cacheGet(ck);
+    if (hit) return hit;
+    const today = new Date().toISOString().slice(0, 10);
+    const end   = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const url   = IS_LIVE
+      ? `/api/earnings?from=${today}&to=${end}`
+      : `https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${end}&token=${getCfg().finnhub}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Finnhub earnings HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    cacheSet(ck, data, 3_600_000);
+    return data;
+  }
+
   async function fetchWithTimeout(url, timeoutMs = 8000) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -426,6 +472,45 @@
       <span class="ticker-val">${prefix}${price}</span>
       <span class="ticker-chg ${cls}"><span style="font-size:0.55rem">${arrow}</span> ${fmtPct(changePct)}</span>
     </span>`;
+  }
+
+  function buildRangeBar(quote) {
+    if (!quote || !quote.high || !quote.low || quote.high === quote.low) return '';
+    const { price, high, low } = quote;
+    const range = high - low;
+    const pct   = Math.max(0, Math.min(100, ((price - low) / range) * 100)).toFixed(1);
+    const color = quote.changePct >= 0 ? '#5cb87a' : '#e05555';
+    return `<div class="range-bar">
+      <span class="range-low">${fmtNum(low, 2)}</span>
+      <div class="range-track">
+        <div class="range-fill" style="width:${pct}%;background:${color}"></div>
+        <div class="range-dot" style="left:${pct}%;background:${color}"></div>
+      </div>
+      <span class="range-high">${fmtNum(high, 2)}</span>
+    </div>`;
+  }
+
+  function renderMktCard(label, sub, price, changePct, high, low, prefix, decimals, error) {
+    if (error || price == null) {
+      return `<div class="mkt-card mkt-card--error">
+        <div class="mkt-card-head"><div class="mkt-card-label">${esc(label)}</div></div>
+        <div class="mkt-card-sub">${esc(sub)}</div>
+        <div class="mkt-card-val">–</div>
+        <div class="mkt-card-sub" style="font-style:italic">Unavailable</div>
+      </div>`;
+    }
+    const up    = changePct >= 0;
+    const arrow = up ? '▲' : '▼';
+    const cls   = up ? 'up' : 'down';
+    return `<div class="mkt-card mkt-card--${cls}">
+      <div class="mkt-card-head">
+        <div class="mkt-card-label">${esc(label)}</div>
+        <span class="mkt-badge ${cls}">${arrow} ${fmtPct(changePct)}</span>
+      </div>
+      <div class="mkt-card-sub">${esc(sub)}</div>
+      <div class="mkt-card-val">${prefix}${fmtNum(price, decimals)}</div>
+      ${buildRangeBar({ price, changePct, high, low })}
+    </div>`;
   }
 
   function renderLeadArticle(article) {
@@ -630,6 +715,15 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  // ── PORTFOLIO STORAGE ───────────────────────────
+  const LS_PORTFOLIO = 'de_portfolio';
+  function getPortfolio() {
+    try { return JSON.parse(localStorage.getItem(LS_PORTFOLIO) || '[]'); } catch { return []; }
+  }
+  function savePortfolio(positions) {
+    localStorage.setItem(LS_PORTFOLIO, JSON.stringify(positions));
   }
 
   // ═══════════════════════════════════════════════
@@ -952,12 +1046,13 @@
         const errMsg = feedErrors.length
           ? feedErrors.slice(0, 3).join(' · ')
           : 'Unknown error — check your connection.';
-        leadEl.innerHTML = `<div class="error-card">
+        if (leadEl) leadEl.innerHTML = `<div class="error-card">
           <div class="error-card-title">News unavailable</div>
           <div class="error-card-msg">${esc(errMsg)}</div>
           <button class="error-card-action" data-action="retry-news">Opnieuw proberen</button>
         </div>`;
-        document.getElementById('article-grid-container').innerHTML =
+        const gridErrEl = document.getElementById('article-grid-container');
+        if (gridErrEl) gridErrEl.innerHTML =
           `<div class="error-card" style="grid-column:1/-1">
             <div class="error-card-title">Articles unavailable</div>
             <div class="error-card-msg">None of the ${FEEDS.length} sources could be loaded.</div>
@@ -975,24 +1070,26 @@
         return;
       }
 
-      leadEl.innerHTML = renderLeadArticle(articles[0]);
+      if (leadEl) leadEl.innerHTML = renderLeadArticle(articles[0]);
 
       const gridEl = document.getElementById('article-grid-container');
+      if (gridEl) {
+        // Bouw grid van 8 artikelen: garandeer minimaal 2 NOS-artikelen over NL/EU bedrijfsleven
+        const nosArticles = articles
+          .filter(a => a.source === 'NOS' || a.source === 'nos.nl' || a.source === 'FD' || a.source === 'fd.nl')
+          .filter(a => a !== articles[0])
+          .slice(0, 2);
 
-      // Bouw grid van 8 artikelen: garandeer minimaal 2 NOS-artikelen over NL/EU bedrijfsleven
-      const nosArticles = articles
-        .filter(a => a.source === 'NOS' || a.source === 'nos.nl' || a.source === 'FD' || a.source === 'fd.nl')
-        .filter(a => a !== articles[0])
-        .slice(0, 2);
+        const otherArticles = articles
+          .filter(a => !nosArticles.includes(a) && a !== articles[0])
+          .slice(0, 6);
 
-      const otherArticles = articles
-        .filter(a => !nosArticles.includes(a) && a !== articles[0])
-        .slice(0, 6);
+        const gridArticles = [...nosArticles, ...otherArticles].slice(0, 8);
+        gridEl.innerHTML = gridArticles.map((a, i) => renderArticleCard(a, i)).join('');
+      }
 
-      const gridArticles = [...nosArticles, ...otherArticles].slice(0, 8);
-      gridEl.innerHTML = gridArticles.map((a, i) => renderArticleCard(a, i)).join('');
-
-      document.getElementById('quote-container').innerHTML = renderQuote(articles[0]);
+      document.getElementById('quote-container')?.innerHTML !== undefined &&
+        (document.getElementById('quote-container').innerHTML = renderQuote(articles[0]));
 
       // Dagbriefing: max 10 items, mix van bronnen
       const briefingItems = articles.slice(0, 10);
@@ -1087,17 +1184,196 @@
       }
     },
 
+    // ── MARKETS PAGE ─────────────────────────────────
+    async loadMarketsPage() {
+      const cfg = getCfg();
+
+      const INDICES = [
+        { label: 'AEX (EWN)',     sub: 'Netherlands ETF · USD', finnhub: 'EWN',  prefix: '$', decimals: 2 },
+        { label: 'DAX (EWG)',     sub: 'Germany ETF · USD',     finnhub: 'EWG',  prefix: '$', decimals: 2 },
+        { label: 'CAC 40 (EWQ)', sub: 'France ETF · USD',      finnhub: 'EWQ',  prefix: '$', decimals: 2 },
+        { label: 'FTSE 100 (EWU)',sub: 'UK ETF · USD',          finnhub: 'EWU',  prefix: '$', decimals: 2 },
+        { label: 'S&P 500',       sub: 'SPY ETF · USD',         finnhub: 'SPY',  prefix: '$', decimals: 2 },
+        { label: 'Nasdaq 100',    sub: 'QQQ ETF · USD',         finnhub: 'QQQ',  prefix: '$', decimals: 2 },
+      ];
+
+      const COMMODITIES = [
+        { label: 'Crude Oil', sub: 'USO ETF · USD', finnhub: 'USO', prefix: '$', decimals: 2 },
+        { label: 'Gold',      sub: 'GLD ETF · USD', finnhub: 'GLD', prefix: '$', decimals: 2 },
+        { label: 'Nat. Gas',  sub: 'UNG ETF · USD', finnhub: 'UNG', prefix: '$', decimals: 2 },
+      ];
+
+      const [idxRes, comRes] = await Promise.all([
+        Promise.allSettled(INDICES.map(i => fetchFinnhub(i.finnhub, cfg.finnhub))),
+        Promise.allSettled(COMMODITIES.map(i => fetchFinnhub(i.finnhub, cfg.finnhub))),
+      ]);
+
+      const renderGroup = (insts, results) =>
+        insts.map((inst, i) => {
+          const r = results[i];
+          if (r.status !== 'fulfilled') return renderMktCard(inst.label, inst.sub, null, null, null, null, inst.prefix, inst.decimals, true);
+          const d = r.value;
+          return renderMktCard(inst.label, inst.sub, d.price, d.changePct, d.high, d.low, inst.prefix, inst.decimals, false);
+        }).join('');
+
+      const idxEl = document.getElementById('indices-grid');
+      const comEl = document.getElementById('commodities-grid');
+      if (idxEl) idxEl.innerHTML = renderGroup(INDICES, idxRes);
+      if (comEl) comEl.innerHTML = renderGroup(COMMODITIES, comRes);
+
+      // Forex via Frankfurter
+      const fxEl = document.getElementById('forex-grid');
+      if (fxEl) {
+        try {
+          const rates = await fetchForexMulti();
+          const pairs = [
+            { label: 'EUR/USD', sub: 'Euro · US Dollar',    price: rates.USD, decimals: 4 },
+            { label: 'EUR/GBP', sub: 'Euro · Brit. Pound',  price: rates.GBP, decimals: 4 },
+            { label: 'EUR/JPY', sub: 'Euro · Japanese Yen', price: rates.JPY, decimals: 2 },
+          ];
+          fxEl.innerHTML = pairs.map(p =>
+            `<div class="mkt-card mkt-card--neutral">
+              <div class="mkt-card-head"><div class="mkt-card-label">${esc(p.label)}</div><span class="mkt-badge neutral">ECB Spot</span></div>
+              <div class="mkt-card-sub">${esc(p.sub)}</div>
+              <div class="mkt-card-val">${fmtNum(p.price, p.decimals)}</div>
+            </div>`
+          ).join('');
+        } catch (e) {
+          fxEl.innerHTML = `<div class="mkt-card mkt-card--error"><div class="mkt-card-head"><div class="mkt-card-label">Forex</div></div><div class="mkt-card-sub">Unavailable: ${esc(e.message)}</div><div class="mkt-card-val">–</div></div>`;
+        }
+      }
+
+      // Crypto via CoinGecko
+      const cryptoEl = document.getElementById('crypto-grid');
+      if (cryptoEl) {
+        try {
+          const coins = await fetchCryptoMulti();
+          cryptoEl.innerHTML = Object.values(coins).map(c => {
+            const up = c.changePct >= 0;
+            return `<div class="mkt-card mkt-card--${up ? 'up' : 'down'}">
+              <div class="mkt-card-head">
+                <div class="mkt-card-label">${esc(c.label)}</div>
+                <span class="mkt-badge ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${fmtPct(c.changePct)}</span>
+              </div>
+              <div class="mkt-card-sub">${esc(c.sub)}</div>
+              <div class="mkt-card-val">$${fmtNum(c.price, c.decimals)}</div>
+            </div>`;
+          }).join('');
+        } catch (e) {
+          cryptoEl.innerHTML = `<div class="mkt-card mkt-card--error"><div class="mkt-card-head"><div class="mkt-card-label">Crypto</div></div><div class="mkt-card-sub">Unavailable: ${esc(e.message)}</div><div class="mkt-card-val">–</div></div>`;
+        }
+      }
+    },
+
+    // ── EARNINGS WIDGET ───────────────────────────────
+    async loadEarningsWidget() {
+      const el = document.getElementById('earnings-container');
+      if (!el) return;
+      try {
+        const data = await fetchEarnings();
+        const items = (data.earningsCalendar || []).filter(e => e.symbol && e.date).slice(0, 10);
+        if (!items.length) {
+          el.innerHTML = `<div class="earnings-empty">No earnings scheduled this week.</div>`;
+          return;
+        }
+        el.innerHTML = `<div class="earnings-table-wrap"><table class="earnings-table">
+          <thead><tr><th>Symbol</th><th>Company</th><th>Date</th><th>EPS Est.</th><th>Revenue Est.</th></tr></thead>
+          <tbody>${items.map(e => `<tr>
+            <td><strong>${esc(e.symbol)}</strong></td>
+            <td>${esc((e.company || '').slice(0, 35))}</td>
+            <td>${esc(e.date)}</td>
+            <td>${e.epsEstimate != null ? fmtNum(e.epsEstimate, 2) : '–'}</td>
+            <td>${e.revenueEstimate ? '$' + fmtNum(e.revenueEstimate / 1_000_000, 0) + 'M' : '–'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
+      } catch (e) {
+        el.innerHTML = `<div class="earnings-empty">Earnings calendar unavailable: ${esc(e.message)}</div>`;
+      }
+    },
+
+    // ── PORTFOLIO PAGE ────────────────────────────────
+    async loadPortfolioPage() {
+      const container = document.getElementById('portfolio-container');
+      if (!container) return;
+
+      const positions = getPortfolio();
+      if (positions.length === 0) {
+        container.innerHTML = `<div class="portfolio-empty">
+          <div class="portfolio-empty-icon">◆</div>
+          <div class="portfolio-empty-title">Your portfolio is empty</div>
+          <p class="portfolio-empty-text">Add your first position using the form below to start tracking your investments with live market data.</p>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = `<p style="font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--muted);padding:1rem 0">Loading live prices…</p>`;
+
+      const cfg = getCfg();
+      const results = await Promise.allSettled(positions.map(p => fetchFinnhub(p.symbol, cfg.finnhub)));
+
+      let totalValue = 0, totalCost = 0;
+      const rows = positions.map((pos, i) => {
+        const r     = results[i];
+        const quote = r.status === 'fulfilled' ? r.value : null;
+        const curr  = quote?.price ?? null;
+        const val   = curr != null ? curr * pos.qty : null;
+        const cost  = pos.buyPrice * pos.qty;
+        const pnl   = val != null ? val - cost : null;
+        const pnlPct = pnl != null ? (pnl / cost) * 100 : null;
+        if (val != null) { totalValue += val; totalCost += cost; }
+        const pnlCls = pnl == null ? '' : pnl >= 0 ? 'up' : 'down';
+        const arrow  = pnl == null ? '' : pnl >= 0 ? '▲ ' : '▼ ';
+        const chgStr = quote ? `<span class="ptf-chg ${quote.changePct >= 0 ? 'up' : 'down'}">${fmtPct(quote.changePct)}</span>` : '';
+        return `<tr>
+          <td class="ptf-symbol"><strong>${esc(pos.symbol)}</strong><span class="ptf-qty">${pos.qty} shares</span></td>
+          <td class="ptf-price">${curr != null ? '$' + fmtNum(curr, 2) + chgStr : '–'}</td>
+          <td class="ptf-cost">$${fmtNum(pos.buyPrice, 2)}</td>
+          <td class="ptf-value">${val != null ? '$' + fmtNum(val, 2) : '–'}</td>
+          <td class="ptf-pnl ${pnlCls}">${pnl != null ? arrow + '$' + fmtNum(Math.abs(pnl), 2) + ' (' + fmtPct(pnlPct) + ')' : '–'}</td>
+          <td><button class="ptf-remove-btn" data-action="remove-position" data-symbol="${esc(pos.symbol)}" title="Remove">×</button></td>
+        </tr>`;
+      }).join('');
+
+      const totalPnl    = totalValue - totalCost;
+      const totalPnlPct = totalCost ? (totalPnl / totalCost) * 100 : 0;
+      const summary     = totalValue > 0 ? `<div class="ptf-summary">
+        <div class="ptf-summary-item"><span class="ptf-summary-label">Total Value</span><span class="ptf-summary-val">$${fmtNum(totalValue, 2)}</span></div>
+        <div class="ptf-summary-item"><span class="ptf-summary-label">Total Cost</span><span class="ptf-summary-val">$${fmtNum(totalCost, 2)}</span></div>
+        <div class="ptf-summary-item"><span class="ptf-summary-label">Total P&amp;L</span><span class="ptf-summary-val ${totalPnl >= 0 ? 'up' : 'down'}">${totalPnl >= 0 ? '▲' : '▼'} $${fmtNum(Math.abs(totalPnl), 2)} (${fmtPct(totalPnlPct)})</span></div>
+      </div>` : '';
+
+      container.innerHTML = summary + `<div class="ptf-table-wrap"><table class="ptf-table">
+        <thead><tr><th>Symbol</th><th>Current Price</th><th>Buy Price</th><th>Value</th><th>P&amp;L</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+    },
+
     // ── INIT ─────────────────────────────────────────
     async loadAll() {
       this.setStatus('loading');
       try {
         await this.loadMarketData();
-        const extras = [this.loadNews(), this.loadFeaturedStock()];
-        // Insider widget alleen op bedrijven-pagina
-        if (PAGE.page === 'bedrijven') {
-          const sym = document.getElementById('insider-symbol')?.value || 'AAPL';
-          extras.push(loadInsiderWidget(sym));
+        const extras = [];
+
+        if (PAGE.page === 'markets') {
+          extras.push(this.loadMarketsPage());
+        } else if (PAGE.page === 'portfolio') {
+          extras.push(this.loadPortfolioPage());
+        } else {
+          extras.push(this.loadNews(), this.loadFeaturedStock());
+          if (PAGE.page === 'bedrijven' || PAGE.page === 'companies') {
+            const sym = document.getElementById('insider-symbol')?.value || 'AAPL';
+            extras.push(loadInsiderWidget(sym));
+            extras.push(this.loadEarningsWidget());
+          }
         }
+
+        // All pages: sidebar briefing & quote populated via loadNews above (or via news on non-article pages)
+        // For markets/portfolio pages, news still runs to populate briefing list
+        if (PAGE.page === 'markets' || PAGE.page === 'portfolio') {
+          extras.push(this.loadNews());
+        }
+
         await Promise.allSettled(extras);
         this.setStatus('live');
         this.updateEditionUI();
@@ -1134,6 +1410,27 @@
         if (e.target === this) App.closeModal();
       });
 
+      // Portfolio: add position form
+      document.getElementById('add-position-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const sym   = document.getElementById('pos-symbol')?.value.trim().toUpperCase();
+        const qty   = parseFloat(document.getElementById('pos-qty')?.value);
+        const price = parseFloat(document.getElementById('pos-price')?.value);
+        if (!sym || !qty || isNaN(qty) || !price || isNaN(price)) return;
+        const positions = getPortfolio();
+        const existing  = positions.find(p => p.symbol === sym);
+        if (existing) {
+          const totalQty      = existing.qty + qty;
+          existing.buyPrice   = ((existing.buyPrice * existing.qty) + (price * qty)) / totalQty;
+          existing.qty        = totalQty;
+        } else {
+          positions.push({ symbol: sym, qty, buyPrice: price });
+        }
+        savePortfolio(positions);
+        e.target.reset();
+        App.loadPortfolioPage();
+      });
+
       // Delegeer klikken op dynamisch gegenereerde knoppen
       document.addEventListener('click', (e) => {
         if (e.target.matches('[data-action="retry-news"]'))    App.loadNews();
@@ -1142,6 +1439,11 @@
         if (e.target.matches('[data-action="retry-insider"]')) {
           const sym = document.getElementById('insider-symbol')?.value || 'AAPL';
           loadInsiderWidget(sym);
+        }
+        if (e.target.matches('[data-action="remove-position"]')) {
+          const sym = e.target.dataset.symbol;
+          savePortfolio(getPortfolio().filter(p => p.symbol !== sym));
+          App.loadPortfolioPage();
         }
       });
 
