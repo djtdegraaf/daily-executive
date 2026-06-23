@@ -191,18 +191,15 @@
     await finnhubAcquire();
     try {
       for (const src of sources) {
-        try {
-          const result = await src();
-          cacheSet(ck, result, 300_000);
-          return result;
-        } catch (e) {
-          if (e.retryable) {
-            await new Promise(r => setTimeout(r, 700));
-            try {
-              const result = await src();
-              cacheSet(ck, result, 300_000);
-              return result;
-            } catch { /* try next source */ }
+        const delays = [800, 2000]; // backoff tussen retries op 429
+        for (let attempt = 0; attempt <= delays.length; attempt++) {
+          try {
+            const result = await src();
+            cacheSet(ck, result, 600_000);
+            return result;
+          } catch (e) {
+            if (!e.retryable || attempt === delays.length) break;
+            await new Promise(r => setTimeout(r, delays[attempt]));
           }
         }
       }
@@ -539,11 +536,12 @@
 
   function renderMktCard(label, sub, price, changePct, high, low, prefix, decimals, error) {
     if (error || price == null) {
+      const reason = (error && typeof error === 'string') ? error : 'Unavailable';
       return `<div class="mkt-card mkt-card--error">
         <div class="mkt-card-head"><div class="mkt-card-label">${esc(label)}</div></div>
         <div class="mkt-card-sub">${esc(sub)}</div>
         <div class="mkt-card-val">–</div>
-        <div class="mkt-card-sub" style="font-style:italic">Unavailable</div>
+        <div class="mkt-card-sub" style="font-style:italic">${esc(reason)}</div>
       </div>`;
     }
     const up    = changePct >= 0;
@@ -1248,7 +1246,7 @@
       const renderGroup = (insts, results) =>
         insts.map((inst, i) => {
           const r = results[i];
-          if (r.status !== 'fulfilled') return renderMktCard(inst.label, inst.sub, null, null, null, null, inst.prefix, inst.decimals, true);
+          if (r.status !== 'fulfilled') return renderMktCard(inst.label, inst.sub, null, null, null, null, inst.prefix, inst.decimals, r.reason?.message || 'Unavailable');
           const d = r.value;
           return renderMktCard(inst.label, inst.sub, d.price, d.changePct, d.high, d.low, inst.prefix, inst.decimals, false);
         }).join('');
