@@ -983,12 +983,19 @@
         ? ALL_FEEDS.filter(f => PAGE.feeds.includes(f.url))
         : ALL_FEEDS;
 
+      console.log('[DE] loadNews: fetching', FEEDS.length, 'feeds:', FEEDS.map(f => f.url));
+
       // Alle feeds parallel ophalen; sla mislukte feeds stil over
       const results = await Promise.allSettled(
         FEEDS.map(f => fetchRSS(f.url).then(items =>
           items.map(a => ({ ...a, source: f.label, lang: f.lang }))
         ))
       );
+
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') console.error('[DE] loadNews: feed FAILED', FEEDS[i].url, '→', r.reason?.message || r.reason);
+        else console.log('[DE] loadNews: feed OK', FEEDS[i].url, '→', r.value.length, 'items');
+      });
 
       const feedErrors = results
         .map((r, i) => r.status === 'rejected' ? `${FEEDS[i].label}: ${r.reason?.message}` : null)
@@ -1343,7 +1350,9 @@
     async loadAll() {
       this.setStatus('loading');
       try {
+        console.log('[DE] loadAll: start, page=', PAGE.page);
         await this.loadMarketData();
+        console.log('[DE] loadAll: loadMarketData done');
         const extras = [];
 
         if (PAGE.page === 'markets') {
@@ -1359,10 +1368,15 @@
           }
         }
 
-        await Promise.allSettled(extras);
+        const extraResults = await Promise.allSettled(extras);
+        extraResults.forEach((r, i) => {
+          if (r.status === 'rejected') console.error('[DE] loadAll: extra task', i, 'rejected:', r.reason);
+        });
+        console.log('[DE] loadAll: all extras settled');
         this.setStatus('live');
         this.updateEditionUI();
-      } catch {
+      } catch (e) {
+        console.error('[DE] loadAll: FATAL ERROR — loadMarketData or setup threw:', e);
         this.setStatus('error');
       }
     },
