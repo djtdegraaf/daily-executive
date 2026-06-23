@@ -1368,39 +1368,43 @@
     },
 
     // ── DEALS TABLE (Deals & M&A-pagina) ──────────────
+    // Alleen deals uit de lopende kalendermaand mét een vermeld geldbedrag —
+    // vermoedelijke/onbevestigde deals mogen ook, mits er een bedrag bekend is.
     async loadDealsTable() {
       const el = document.getElementById('deals-table-container');
       if (!el) return;
       try {
         const { articles, feedErrors, feedCount } = await gatherArticles();
 
-        if (!articles.length) {
-          const errMsg = feedErrors.length ? feedErrors.slice(0, 3).join(' · ') : `Geen van de ${feedCount} bronnen gaf resultaat.`;
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthName  = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+        const deals = articles
+          .map(a => ({ article: a, date: a.pubDate ? new Date(a.pubDate) : null, dealVal: extractDealValue(a) }))
+          .filter(d => d.dealVal && d.date && !isNaN(d.date) && d.date >= monthStart && d.date <= now);
+
+        if (!deals.length) {
+          const errMsg = feedErrors.length ? feedErrors.slice(0, 3).join(' · ') : '';
           el.innerHTML = `<div class="earnings-empty">
-            Geen overnames of fusies gevonden in de afgelopen dag(en) nieuws.<br>
-            <span style="font-size:0.7rem">${esc(errMsg)}</span>
+            Geen deals met een bekend bedrag gevonden in ${esc(monthName)} in de gemonitorde feeds.
+            ${errMsg ? `<br><span style="font-size:0.7rem">${esc(errMsg)}</span>` : ''}
           </div>`;
           return;
         }
 
         // Chronologisch: nieuwste deal boven aan
-        articles.sort((a, b) => {
-          const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-          const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-          return db - da;
-        });
+        deals.sort((a, b) => b.date - a.date);
 
-        const rows = articles.slice(0, 25).map(a => {
-          const dealVal = extractDealValue(a);
-          const date = a.pubDate ? new Date(a.pubDate) : null;
-          const dateStr = date && !isNaN(date) ? date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '–';
+        const rows = deals.slice(0, 25).map(({ article: a, date, dealVal }) => {
+          const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
           return `<tr>
             <td class="deals-date">${esc(dateStr)}</td>
             <td class="deals-headline">
               <a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.title)}</a>
               <span class="deals-source">${esc(a.source)}</span>
             </td>
-            <td class="deals-value">${dealVal ? `<span class="deal-badge">${esc(dealVal)}</span>` : '–'}</td>
+            <td class="deals-value"><span class="deal-badge">${esc(dealVal)}</span></td>
           </tr>`;
         }).join('');
 
