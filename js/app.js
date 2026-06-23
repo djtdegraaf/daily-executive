@@ -382,6 +382,23 @@
     return data.rates;
   }
 
+  // Echte spotprijzen voor goud/olie/gas via Alpha Vantage (server-side proxy,
+  // alleen op live site — vereist een AV-sleutel die niet client-side bestaat).
+  // 8 uur cache: AV's gratis tier staat maar 25 requests/dag toe, gedeeld door
+  // alle bezoekers, en commodityprijzen veranderen sowieso maar 1x per dag.
+  async function fetchCommoditiesSpot() {
+    const ck = 'av_commodities';
+    const hit = cacheGet(ck);
+    if (hit) return hit;
+    if (!IS_LIVE) throw new Error('Spot prices only available on the live site');
+    const res = await fetch('/api/commodities');
+    if (!res.ok) throw new Error(`Commodities HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    cacheSet(ck, data, 8 * 3_600_000);
+    return data;
+  }
+
 
   async function fetchWithTimeout(url, timeoutMs = 4000) {
     const ctrl = new AbortController();
@@ -615,6 +632,13 @@
         <div class="mkt-card-sub">${esc(sub)}</div>
         <div class="mkt-card-val">–</div>
         <div class="mkt-card-sub" style="font-style:italic">${esc(reason)}</div>
+      </div>`;
+    }
+    if (changePct == null) {
+      return `<div class="mkt-card mkt-card--neutral">
+        <div class="mkt-card-head"><div class="mkt-card-label">${esc(label)}</div></div>
+        <div class="mkt-card-sub">${esc(sub)}</div>
+        <div class="mkt-card-val">${prefix}${fmtNum(price, decimals)}</div>
       </div>`;
     }
     const up    = changePct >= 0;
@@ -1262,16 +1286,7 @@
         { label: 'Nasdaq 100',    sub: 'QQQ ETF · USD',         finnhub: 'QQQ',  prefix: '$', decimals: 2 },
       ];
 
-      const COMMODITIES = [
-        { label: 'Crude Oil', sub: 'USO ETF · USD', finnhub: 'USO', prefix: '$', decimals: 2 },
-        { label: 'Gold',      sub: 'GLD ETF · USD', finnhub: 'GLD', prefix: '$', decimals: 2 },
-        { label: 'Nat. Gas',  sub: 'UNG ETF · USD', finnhub: 'UNG', prefix: '$', decimals: 2 },
-      ];
-
-      const [idxRes, comRes] = await Promise.all([
-        Promise.allSettled(INDICES.map(i => fetchFinnhub(i.finnhub, cfg.finnhub))),
-        Promise.allSettled(COMMODITIES.map(i => fetchFinnhub(i.finnhub, cfg.finnhub))),
-      ]);
+      const idxRes = await Promise.allSettled(INDICES.map(i => fetchFinnhub(i.finnhub, cfg.finnhub)));
 
       const renderGroup = (insts, results) =>
         insts.map((inst, i) => {
@@ -1282,9 +1297,35 @@
         }).join('');
 
       const idxEl = document.getElementById('indices-grid');
-      const comEl = document.getElementById('commodities-grid');
       if (idxEl) idxEl.innerHTML = renderGroup(INDICES, idxRes);
-      if (comEl) comEl.innerHTML = renderGroup(COMMODITIES, comRes);
+
+      // Commodities: probeer echte spotprijs (Alpha Vantage); val terug op
+      // ETF-proxies via Finnhub als AV niet beschikbaar is of rate-limited raakt.
+      const comEl = document.getElementById('commodities-grid');
+      if (comEl) {
+        try {
+          const spot = await fetchCommoditiesSpot();
+          const items = [
+            { key: 'wti',  label: 'Crude Oil (WTI)', sub: 'Spot · USD/barrel' },
+            { key: 'gold', label: 'Gold',             sub: 'Spot · USD/oz'     },
+            { key: 'gas',  label: 'Nat. Gas',         sub: 'Spot · USD/MMBtu' },
+          ];
+          comEl.innerHTML = items.map(it => {
+            const d = spot[it.key];
+            if (!d || d.price == null) return renderMktCard(it.label, it.sub, null, null, null, null, '$', 2, 'No data');
+            const changePct = d.prevClose ? ((d.price - d.prevClose) / d.prevClose) * 100 : null;
+            return renderMktCard(it.label, it.sub, d.price, changePct, null, null, '$', 2, false);
+          }).join('');
+        } catch {
+          const COMMODITIES = [
+            { label: 'Crude Oil', sub: 'USO ETF · USD', finnhub: 'USO', prefix: '$', decimals: 2 },
+            { label: 'Gold',      sub: 'GLD ETF · USD', finnhub: 'GLD', prefix: '$', decimals: 2 },
+            { label: 'Nat. Gas',  sub: 'UNG ETF · USD', finnhub: 'UNG', prefix: '$', decimals: 2 },
+          ];
+          const comRes = await Promise.allSettled(COMMODITIES.map(i => fetchFinnhub(i.finnhub, cfg.finnhub)));
+          comEl.innerHTML = renderGroup(COMMODITIES, comRes);
+        }
+      }
 
       // Forex via Frankfurter
       const fxEl = document.getElementById('forex-grid');
