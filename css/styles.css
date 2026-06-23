@@ -607,6 +607,24 @@
       border-radius: 2px;
     }
 
+    /* ── DEAL VALUE BADGE (Deals-pagina) ──────────────────── */
+    .deal-badge {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.63rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--gold);
+      background: var(--gold-pale);
+      border: 1px solid var(--gold);
+      padding: 0.2rem 0.5rem;
+      border-radius: 2px;
+    }
+
+    .deal-badge--sm {
+      font-size: 0.6rem;
+      padding: 0.15rem 0.4rem;
+    }
+
     .lead-headline {
       font-family: 'Playfair Display', Georgia, serif;
       font-size: clamp(1.8rem, 3.2vw, 2.6rem);

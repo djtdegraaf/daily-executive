@@ -97,6 +97,16 @@
     return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
   }
 
+  // Detecteert een vermelde dealwaarde in titel/omschrijving (bijv. "$4.2 billion"
+  // of "€500 million") — alleen gebruikt op de Deals-pagina als visuele accent.
+  function extractDealValue(article) {
+    const text = `${article.title} ${article.desc}`;
+    const m = text.match(/(\$|€|£)\s?(\d+(?:\.\d+)?)\s?(billion|bn|million|mln)\b/i);
+    if (!m) return null;
+    const unit = /^b/i.test(m[3]) ? 'B' : 'M';
+    return `${m[1]}${m[2]}${unit}`;
+  }
+
   // Scoort hoe zakelijk/financieel een artikel is (0–10).
   // Hogere score = meer relevant voor een executive-lezer.
   function businessScore(article) {
@@ -561,10 +571,12 @@
   function renderLeadArticle(article) {
     const ago  = timeAgo(article.pubDate);
     const deck = article.desc.length > 180 ? article.desc.slice(0, 180) + '…' : article.desc;
+    const dealVal = PAGE.page === 'deals' ? extractDealValue(article) : null;
 
     return `<article class="lead-article fade-in">
       <div class="article-meta">
         <span class="category-tag">${article.category || 'News'}</span>
+        ${dealVal ? `<span class="deal-badge">${esc(dealVal)} Deal</span>` : ''}
         <span class="source-tag">${article.source}</span>
         <span class="article-time">${ago}</span>
       </div>
@@ -577,10 +589,12 @@
   function renderArticleCard(article, idx) {
     const ago     = timeAgo(article.pubDate);
     const excerpt = article.desc.length > 160 ? article.desc.slice(0, 160) + '…' : article.desc;
+    const dealVal = PAGE.page === 'deals' ? extractDealValue(article) : null;
 
     return `<article class="article-card fade-in" style="animation-delay:${idx * 0.08}s">
       <div class="article-meta">
         <span class="source-badge">${esc(article.source)}</span>
+        ${dealVal ? `<span class="deal-badge deal-badge--sm">${esc(dealVal)}</span>` : ''}
         <span class="article-time">${ago}</span>
       </div>
       <h2 class="card-headline"><a href="${esc(article.link)}" target="_blank" rel="noopener">${esc(article.title)}</a></h2>
