@@ -468,6 +468,69 @@
     }).filter(i => i.title.length > 5);
   }
 
+  // Haalt alle (of een subset van) feeds op, past de optionele keyword-filter
+  // toe en dedupliceert. Gedeeld door loadNews() en loadDealsTable().
+  async function gatherArticles() {
+    const ALL_FEEDS = [
+      { url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147', label: 'CNBC', lang: 'en' },
+      { url: 'https://feeds.bbci.co.uk/news/business/rss.xml',         label: 'BBC Business',lang: 'en' },
+      { url: 'https://www.theguardian.com/business/rss',               label: 'Guardian',    lang: 'en' },
+      { url: 'https://feeds.marketwatch.com/marketwatch/topstories/',  label: 'MarketWatch', lang: 'en' },
+      { url: 'https://feeds.nos.nl/nosnieuwseconomie',                 label: 'NOS',         lang: 'nl' },
+      { url: 'https://fd.nl/?rss',                                     label: 'FD',          lang: 'nl' },
+    ];
+
+    // Pagina kan een subset kiezen via PAGE.feeds (array van URL-strings)
+    const FEEDS = PAGE.feeds
+      ? ALL_FEEDS.filter(f => PAGE.feeds.includes(f.url))
+      : ALL_FEEDS;
+
+    console.log('[DE] gatherArticles: fetching', FEEDS.length, 'feeds:', FEEDS.map(f => f.url));
+
+    // Alle feeds parallel ophalen; sla mislukte feeds stil over
+    const results = await Promise.allSettled(
+      FEEDS.map(f => fetchRSS(f.url).then(items =>
+        items.map(a => ({ ...a, source: f.label, lang: f.lang }))
+      ))
+    );
+
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') console.error('[DE] gatherArticles: feed FAILED', FEEDS[i].url, '→', r.reason?.message || r.reason);
+      else console.log('[DE] gatherArticles: feed OK', FEEDS[i].url, '→', r.value.length, 'items');
+    });
+
+    const feedErrors = results
+      .map((r, i) => r.status === 'rejected' ? `${FEEDS[i].label}: ${r.reason?.message}` : null)
+      .filter(Boolean);
+
+    let articles = results
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.value);
+
+    // Optionele keyword-filter per pagina. Geldt voor alle talen — elke pagina's
+    // filterKeywords-lijst bevat zowel Engelse als Nederlandse termen, zodat
+    // NOS/FD-artikelen ook echt op onderwerp worden gefilterd in plaats van
+    // altijd door te komen.
+    if (PAGE.filterKeywords && PAGE.filterKeywords.length > 0) {
+      const kws = PAGE.filterKeywords;
+      articles = articles.filter(a => {
+        const text = (a.title + ' ' + a.desc).toLowerCase();
+        return kws.some(k => text.includes(k));
+      });
+    }
+
+    // Dedupliceren op de eerste 55 tekens van de title (case-insensitive)
+    const seen = new Set();
+    articles = articles.filter(a => {
+      const key = a.title.slice(0, 55).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return { articles, feedErrors, feedCount: FEEDS.length };
+  }
+
   // ═══════════════════════════════════════════════
   // MARKET DATA INSTRUMENTS
   // ═══════════════════════════════════════════════
@@ -1016,54 +1079,8 @@
 
     // ── NEWS (RSS) ───────────────────────────────────
     async loadNews() {
-      // ── Alle beschikbare feeds ──────────────────────
-      const ALL_FEEDS = [
-        { url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147', label: 'CNBC', lang: 'en' },
-        { url: 'https://feeds.bbci.co.uk/news/business/rss.xml',         label: 'BBC Business',lang: 'en' },
-        { url: 'https://www.theguardian.com/business/rss',               label: 'Guardian',    lang: 'en' },
-        { url: 'https://feeds.marketwatch.com/marketwatch/topstories/',  label: 'MarketWatch', lang: 'en' },
-        { url: 'https://feeds.nos.nl/nosnieuwseconomie',                 label: 'NOS',         lang: 'nl' },
-        { url: 'https://fd.nl/?rss',                                     label: 'FD',          lang: 'nl' },
-      ];
-
-      // Pagina kan een subset kiezen via PAGE.feeds (array van URL-strings)
-      const FEEDS = PAGE.feeds
-        ? ALL_FEEDS.filter(f => PAGE.feeds.includes(f.url))
-        : ALL_FEEDS;
-
-      console.log('[DE] loadNews: fetching', FEEDS.length, 'feeds:', FEEDS.map(f => f.url));
-
-      // Alle feeds parallel ophalen; sla mislukte feeds stil over
-      const results = await Promise.allSettled(
-        FEEDS.map(f => fetchRSS(f.url).then(items =>
-          items.map(a => ({ ...a, source: f.label, lang: f.lang }))
-        ))
-      );
-
-      results.forEach((r, i) => {
-        if (r.status === 'rejected') console.error('[DE] loadNews: feed FAILED', FEEDS[i].url, '→', r.reason?.message || r.reason);
-        else console.log('[DE] loadNews: feed OK', FEEDS[i].url, '→', r.value.length, 'items');
-      });
-
-      const feedErrors = results
-        .map((r, i) => r.status === 'rejected' ? `${FEEDS[i].label}: ${r.reason?.message}` : null)
-        .filter(Boolean);
-
-      let articles = results
-        .filter(r => r.status === 'fulfilled')
-        .flatMap(r => r.value);
-
-      // Optionele keyword-filter per pagina. Geldt voor alle talen — elke pagina's
-      // filterKeywords-lijst bevat zowel Engelse als Nederlandse termen, zodat
-      // NOS/FD-artikelen ook echt op onderwerp worden gefilterd in plaats van
-      // altijd door te komen.
-      if (PAGE.filterKeywords && PAGE.filterKeywords.length > 0) {
-        const kws = PAGE.filterKeywords;
-        articles = articles.filter(a => {
-          const text = (a.title + ' ' + a.desc).toLowerCase();
-          return kws.some(k => text.includes(k));
-        });
-      }
+      const { articles: deduped, feedErrors, feedCount } = await gatherArticles();
+      let articles = deduped;
 
       // Score elk artikel op zakelijke relevantie
       articles.forEach(a => { a._biz = businessScore(a); });
@@ -1075,15 +1092,6 @@
         const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
         const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
         return db - da;
-      });
-
-      // Dedupliceren op de eerste 55 tekens van de title (case-insensitive)
-      const seen = new Set();
-      articles = articles.filter(a => {
-        const key = a.title.slice(0, 55).toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
       });
 
       // ── 70% international / 30% NL mix ───────────
@@ -1125,7 +1133,7 @@
         if (gridErrEl) gridErrEl.innerHTML =
           `<div class="error-card" style="grid-column:1/-1">
             <div class="error-card-title">Articles unavailable</div>
-            <div class="error-card-msg">None of the ${FEEDS.length} sources could be loaded.</div>
+            <div class="error-card-msg">None of the ${feedCount} sources could be loaded.</div>
           </div>`;
         return;
       }
@@ -1359,6 +1367,52 @@
       }
     },
 
+    // ── DEALS TABLE (Deals & M&A-pagina) ──────────────
+    async loadDealsTable() {
+      const el = document.getElementById('deals-table-container');
+      if (!el) return;
+      try {
+        const { articles, feedErrors, feedCount } = await gatherArticles();
+
+        if (!articles.length) {
+          const errMsg = feedErrors.length ? feedErrors.slice(0, 3).join(' · ') : `Geen van de ${feedCount} bronnen gaf resultaat.`;
+          el.innerHTML = `<div class="earnings-empty">
+            Geen overnames of fusies gevonden in de afgelopen dag(en) nieuws.<br>
+            <span style="font-size:0.7rem">${esc(errMsg)}</span>
+          </div>`;
+          return;
+        }
+
+        // Chronologisch: nieuwste deal boven aan
+        articles.sort((a, b) => {
+          const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+          const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+          return db - da;
+        });
+
+        const rows = articles.slice(0, 25).map(a => {
+          const dealVal = extractDealValue(a);
+          const date = a.pubDate ? new Date(a.pubDate) : null;
+          const dateStr = date && !isNaN(date) ? date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '–';
+          return `<tr>
+            <td class="deals-date">${esc(dateStr)}</td>
+            <td class="deals-headline">
+              <a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+              <span class="deals-source">${esc(a.source)}</span>
+            </td>
+            <td class="deals-value">${dealVal ? `<span class="deal-badge">${esc(dealVal)}</span>` : '–'}</td>
+          </tr>`;
+        }).join('');
+
+        el.innerHTML = `<div class="deals-table-wrap"><table class="deals-table">
+          <thead><tr><th>Date</th><th>Deal</th><th>Value</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`;
+      } catch (e) {
+        el.innerHTML = `<div class="earnings-empty">Deals unavailable: ${esc(e.message)}</div>`;
+      }
+    },
+
     // ── PORTFOLIO PAGE ────────────────────────────────
     async loadPortfolioPage() {
       const container = document.getElementById('portfolio-container');
@@ -1429,6 +1483,8 @@
           extras.push(this.loadMarketsPage(), this.loadFeaturedStock());
         } else if (PAGE.page === 'portfolio') {
           extras.push(this.loadPortfolioPage(), this.loadFeaturedStock());
+        } else if (PAGE.page === 'deals') {
+          extras.push(this.loadDealsTable(), this.loadFeaturedStock());
         } else {
           extras.push(this.loadNews(), this.loadFeaturedStock());
           if (PAGE.page === 'bedrijven' || PAGE.page === 'companies') {

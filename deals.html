@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=202606061800" />
+  <link rel="stylesheet" href="css/styles.css?v=202606062100" />
 </head>
 <body>
 
@@ -88,26 +88,13 @@
 <div class="container">
   <div class="content-grid">
     <main>
-      <div class="section-label">Latest Deals</div>
-      <div id="lead-article-container">
-        <div class="lead-article">
-          <div class="shimmer shimmer-line" style="width:60%;margin-bottom:1rem;"></div>
-          <div class="shimmer shimmer-line" style="width:90%;height:2em;margin-bottom:0.8rem;"></div>
-          <div class="shimmer shimmer-line" style="width:75%;height:2em;margin-bottom:1.2rem;"></div>
-          <div class="shimmer shimmer-line" style="width:100%;"></div>
-          <div class="shimmer shimmer-line" style="width:95%;"></div>
-          <div class="shimmer shimmer-line" style="width:88%;"></div>
-        </div>
-      </div>
-      <div id="article-grid-container" class="article-grid">
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:90%;"></div><div class="shimmer shimmer-line" style="width:75%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:85%;"></div><div class="shimmer shimmer-line" style="width:70%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:88%;"></div><div class="shimmer shimmer-line" style="width:80%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:92%;"></div><div class="shimmer shimmer-line" style="width:68%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:86%;"></div><div class="shimmer shimmer-line" style="width:72%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:91%;"></div><div class="shimmer shimmer-line" style="width:77%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:84%;"></div><div class="shimmer shimmer-line" style="width:65%;"></div></div>
-        <div class="article-card"><div class="shimmer shimmer-line" style="width:89%;"></div><div class="shimmer shimmer-line" style="width:71%;"></div></div>
+      <div class="section-label">This Week's Deals &amp; Acquisitions</div>
+      <div id="deals-table-container">
+        <div class="shimmer shimmer-line" style="width:100%;height:40px;margin-bottom:0.5rem;"></div>
+        <div class="shimmer shimmer-line" style="width:100%;height:40px;margin-bottom:0.5rem;"></div>
+        <div class="shimmer shimmer-line" style="width:100%;height:40px;margin-bottom:0.5rem;"></div>
+        <div class="shimmer shimmer-line" style="width:100%;height:40px;margin-bottom:0.5rem;"></div>
+        <div class="shimmer shimmer-line" style="width:100%;height:40px;"></div>
       </div>
     </main>
 
@@ -175,7 +162,7 @@
       <div class="footer-badges"><span class="badge">GDPR Compliant</span><span class="badge">Live Data</span></div>
     </div>
     <div class="data-disclaimer">
-      News: FD, MarketWatch, BBC Business. For informational purposes only, not investment advice.
+      News: CNBC, BBC, Guardian, MarketWatch, NOS, FD. For informational purposes only, not investment advice.
     </div>
   </div>
 </footer>
@@ -185,11 +172,8 @@
     page:      'deals',
     title:     'Deals & M&A — Daily Executive',
     activeNav: 'Deals',
-    feeds: [
-      'https://fd.nl/?rss',
-      'https://feeds.marketwatch.com/marketwatch/topstories/',
-      'https://feeds.bbci.co.uk/news/business/rss.xml',
-    ],
+    // Geen feeds-subset: alle bronnen (CNBC, BBC, Guardian, MarketWatch, NOS, FD)
+    // worden doorzocht zodat er een zo groot mogelijke kans is op echte M&A-nieuws.
     filterKeywords: [
       'acquisition','acquires','acquired','acquire','merger','merges','takeover',
       'buyout','leveraged buyout','private equity','divestiture','divest','spinoff',
@@ -203,10 +187,8 @@
       'mededingingsautoriteit','acm','toezichthouder','intentieverklaring',
       'overeenkomst tot overname','bod op',
     ],
-    leadLabel: 'Featured Deal',
-    gridLabel: 'More Deals & M&A',
   };
 </script>
-<script src="js/app.js?v=202606062000"></script>
+<script src="js/app.js?v=202606062100"></script>
 </body>
 </html>
