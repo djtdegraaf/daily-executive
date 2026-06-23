@@ -140,6 +140,28 @@
                   window.location.hostname !== '127.0.0.1' &&
                   !window.location.hostname.includes('192.168.');
 
+  // ── CONCURRENCY LIMITER ──────────────────────────────────
+  // Voorkomt dat alle marktinstrumenten tegelijk worden opgevraagd, wat
+  // Finnhub's burst-rate-limit (429) kan triggeren ook al blijft het totaal
+  // ruim onder de 60 req/min. Geldt voor alle Finnhub-aanroepen app-breed.
+  const FINNHUB_MAX_CONCURRENT = 4;
+  let finnhubActive = 0;
+  const finnhubQueue = [];
+  function finnhubAcquire() {
+    return new Promise(resolve => {
+      const tryRun = () => {
+        if (finnhubActive < FINNHUB_MAX_CONCURRENT) { finnhubActive++; resolve(); }
+        else finnhubQueue.push(tryRun);
+      };
+      tryRun();
+    });
+  }
+  function finnhubRelease() {
+    finnhubActive--;
+    const next = finnhubQueue.shift();
+    if (next) next();
+  }
+
   async function fetchFinnhub(symbol, apiKey) {
     const ck = 'fh_' + symbol.replace(/[^a-zA-Z0-9]/g, '_');
     const hit = cacheGet(ck);
@@ -154,18 +176,38 @@
     const sources = [];
     if (IS_LIVE) sources.push(async () => {
       const res = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
+      if (res.status === 429) throw Object.assign(new Error('proxy HTTP 429'), { retryable: true });
       if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
       return parseQuote(await res.json());
     });
     if (apiKey) sources.push(async () => {
       const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`);
+      if (res.status === 429) throw Object.assign(new Error('Finnhub HTTP 429'), { retryable: true });
       if (!res.ok) throw new Error(`Finnhub HTTP ${res.status}`);
       return parseQuote(await res.json());
     });
     if (!sources.length) throw new Error(`No Finnhub API key configured`);
 
-    for (const src of sources) {
-      try { const result = await src(); cacheSet(ck, result, 300_000); return result; } catch { /* try next */ }
+    await finnhubAcquire();
+    try {
+      for (const src of sources) {
+        try {
+          const result = await src();
+          cacheSet(ck, result, 300_000);
+          return result;
+        } catch (e) {
+          if (e.retryable) {
+            await new Promise(r => setTimeout(r, 700));
+            try {
+              const result = await src();
+              cacheSet(ck, result, 300_000);
+              return result;
+            } catch { /* try next source */ }
+          }
+        }
+      }
+    } finally {
+      finnhubRelease();
     }
     throw new Error(`No data for ${symbol}`);
   }
@@ -188,29 +230,39 @@
         if (!rate) throw new Error('no data');
         return { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
       });
-    } else if (apiKey) {
+      // Frankfurter via eigen server-side proxy — directe browser-fetch naar
+      // api.frankfurter.app wordt op het live domein door CORS geblokkeerd.
       sources.push(async () => {
-        const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${encodeURIComponent(apiKey)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`AV HTTP ${res.status}`);
+        const res = await fetch('/api/forexmulti');
+        if (!res.ok) throw new Error(`Forex proxy HTTP ${res.status}`);
         const data = await res.json();
-        if (data['Note'] || data['Information']) throw new Error('rate limit');
-        const rate = data['Realtime Currency Exchange Rate'];
-        if (!rate) throw new Error('no data');
-        return { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
+        if (!data.rates?.USD) throw new Error('no data');
+        return { price: data.rates.USD, symbol: 'EUR/USD' };
+      });
+    } else {
+      if (apiKey) {
+        sources.push(async () => {
+          const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${encodeURIComponent(apiKey)}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`AV HTTP ${res.status}`);
+          const data = await res.json();
+          if (data['Note'] || data['Information']) throw new Error('rate limit');
+          const rate = data['Realtime Currency Exchange Rate'];
+          if (!rate) throw new Error('no data');
+          return { price: parseFloat(rate['5. Exchange Rate']), symbol: 'EUR/USD' };
+        });
+      }
+      // Frankfurter direct (lokale dev — geen eigen proxy beschikbaar)
+      sources.push(async () => {
+        const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
+        if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data.rates?.USD) throw new Error('no data');
+        return { price: data.rates.USD, symbol: 'EUR/USD' };
       });
     }
 
-    // Source 2: Frankfurter (ECB, no key)
-    sources.push(async () => {
-      const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
-      if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
-      const data = await res.json();
-      if (!data.rates?.USD) throw new Error('no data');
-      return { price: data.rates.USD, symbol: 'EUR/USD' };
-    });
-
-    // Source 3: Open Exchange Rates (no key, free tier)
+    // Laatste redmiddel: Open Exchange Rates (geen key, andere CORS-policy)
     sources.push(async () => {
       const res = await fetch('https://open.er-api.com/v6/latest/EUR');
       if (!res.ok) throw new Error(`OER HTTP ${res.status}`);
@@ -312,8 +364,11 @@
     const ck = 'ff_eurmulti';
     const hit = cacheGet(ck);
     if (hit) return hit;
-    const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,JPY');
-    if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
+    // Op live site via eigen server-side proxy (directe browser-fetch naar
+    // api.frankfurter.app wordt op dit domein door CORS geblokkeerd).
+    const url = IS_LIVE ? '/api/forexmulti' : 'https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,JPY';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Forex HTTP ${res.status}`);
     const data = await res.json();
     if (!data.rates) throw new Error('No rates');
     cacheSet(ck, data.rates, 300_000);
