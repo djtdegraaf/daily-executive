@@ -165,7 +165,7 @@
     if (!sources.length) throw new Error(`No Finnhub API key configured`);
 
     for (const src of sources) {
-      try { const result = await src(); cacheSet(ck, result, 60_000); return result; } catch { /* try next */ }
+      try { const result = await src(); cacheSet(ck, result, 300_000); return result; } catch { /* try next */ }
     }
     throw new Error(`No data for ${symbol}`);
   }
@@ -389,7 +389,6 @@
 
     const proxies = [
       { url: `/api/rss?url=${encoded}`,                          json: false },
-      { url: `https://corsproxy.io/?url=${encoded}`,             json: false },
       { url: `https://api.allorigins.win/get?url=${encoded}`,    json: true  },
     ];
 
@@ -968,8 +967,6 @@
     async loadNews() {
       // ── Alle beschikbare feeds ──────────────────────
       const ALL_FEEDS = [
-        { url: 'https://feeds.reuters.com/reuters/businessNews',         label: 'Reuters',     lang: 'en' },
-        { url: 'https://feeds.reuters.com/reuters/financialsNews',       label: 'Reuters',     lang: 'en' },
         { url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147', label: 'CNBC', lang: 'en' },
         { url: 'https://feeds.bbci.co.uk/news/business/rss.xml',         label: 'BBC Business',lang: 'en' },
         { url: 'https://www.theguardian.com/business/rss',               label: 'Guardian',    lang: 'en' },
@@ -1005,10 +1002,13 @@
         .filter(r => r.status === 'fulfilled')
         .flatMap(r => r.value);
 
-      // Optionele keyword-filter per pagina (bijv. AEX-pagina toont alleen NL/EU nieuws)
+      // Optionele keyword-filter per pagina — keywords zijn Engelstalig, dus alleen
+      // toepassen op Engelse artikelen. NL-artikelen (NOS/FD) zijn al economisch/zakelijk
+      // van aard en worden altijd doorgelaten.
       if (PAGE.filterKeywords && PAGE.filterKeywords.length > 0) {
         const kws = PAGE.filterKeywords;
         articles = articles.filter(a => {
+          if (a.lang === 'nl') return true;
           const text = (a.title + ' ' + a.desc).toLowerCase();
           return kws.some(k => text.includes(k));
         });
@@ -1447,7 +1447,7 @@
       });
 
       this.loadAll();
-      setInterval(() => this.loadMarketData(), 60_000);
+      setInterval(() => this.loadMarketData(), 300_000);
     },
   };
 
