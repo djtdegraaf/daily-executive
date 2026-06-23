@@ -1096,9 +1096,12 @@
         const mixed = [];
         let ii = 0, ni = 0;
         while (mixed.length < total) {
+          const before = mixed.length;
           if (ii < intlSlots && ii < intl.length)  mixed.push(intl[ii++]);
           if (ni < nlSlots   && ni < nl.length)    mixed.push(nl[ni++]);
-          if (ii >= intl.length && ni >= nl.length) break;
+          // Geen van beide quota's kon nog gevuld worden binnen hun array — stop,
+          // anders loopt dit eindeloos door als bv. intl leeg is maar nl nog niet.
+          if (mixed.length === before) break;
         }
         // fill any remaining slots with whatever is left
         const used = new Set(mixed);
