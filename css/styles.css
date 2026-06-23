@@ -1603,38 +1603,72 @@
 
     .ptf-form-submit:hover { background: #2d2820; }
 
-    /* ── EARNINGS CALENDAR ─────────────────────────────────── */
-    .earnings-table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--rule);
-      border-radius: 4px;
+    /* ── TOP MOVERS ───────────────────────────────────────── */
+    .movers-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
       margin-bottom: 1.5rem;
     }
 
-    .earnings-table { width: 100%; border-collapse: collapse; font-family: 'DM Sans', sans-serif; }
-
-    .earnings-table thead tr { background: #f0ece4; border-bottom: 2px solid var(--rule); }
-
-    .earnings-table th {
-      padding: 0.6rem 1rem;
+    .movers-col-label {
+      font-family: 'DM Sans', sans-serif;
       font-size: 0.63rem;
       font-weight: 600;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: var(--muted);
-      text-align: left;
+      color: var(--gold);
+      margin-bottom: 0.7rem;
     }
 
-    .earnings-table td {
-      padding: 0.65rem 1rem;
-      border-bottom: 1px solid var(--rule);
-      font-size: 0.8rem;
-      vertical-align: middle;
+    .mover-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.65rem 0.9rem;
+      border: 1px solid var(--rule);
+      border-left: 3px solid var(--rule);
+      border-radius: 3px;
+      margin-bottom: 0.5rem;
+      background: #fdfbf7;
     }
 
-    .earnings-table tbody tr:last-child td { border-bottom: none; }
-    .earnings-table tbody tr:hover { background: rgba(139,105,20,0.04); }
-    .earnings-co { display: block; font-size: 0.62rem; color: var(--muted); margin-top: 0.05rem; }
+    .mover-card--up   { border-left-color: #5cb87a; }
+    .mover-card--down { border-left-color: #e05555; }
+
+    .mover-name {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .mover-val {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      color: var(--mid);
+    }
+
+    .mover-chg {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.74rem;
+      font-weight: 600;
+      min-width: 64px;
+      text-align: right;
+    }
+
+    @media (max-width: 600px) {
+      .movers-grid { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+      .mover-card { flex-wrap: wrap; padding: 0.55rem 0.7rem; }
+      .mover-name { font-size: 0.72rem; flex: 1 1 100%; }
+      .mover-val, .mover-chg { font-size: 0.7rem; }
+    }
+
+    @media (max-width: 400px) {
+      .movers-grid { grid-template-columns: 1fr; }
+    }
 
     .earnings-empty {
       font-family: 'DM Sans', sans-serif;

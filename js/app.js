@@ -320,22 +320,6 @@
     return data.rates;
   }
 
-  async function fetchEarnings() {
-    const ck = 'fh_earnings';
-    const hit = cacheGet(ck);
-    if (hit) return hit;
-    const today = new Date().toISOString().slice(0, 10);
-    const end   = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
-    const url   = IS_LIVE
-      ? `/api/earnings?from=${today}&to=${end}`
-      : `https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${end}&token=${getCfg().finnhub}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Finnhub earnings HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    cacheSet(ck, data, 3_600_000);
-    return data;
-  }
 
   async function fetchWithTimeout(url, timeoutMs = 4000) {
     const ctrl = new AbortController();
@@ -1263,29 +1247,45 @@
       }
     },
 
-    // ── EARNINGS WIDGET ───────────────────────────────
-    async loadEarningsWidget() {
-      const el = document.getElementById('earnings-container');
+    // ── TOP MOVERS WIDGET ──────────────────────────────
+    // Hergebruikt de Finnhub-quotes die loadMarketData al voor de sidebar
+    // opvraagt (zelfde cache-key) — geen extra API-calls nodig.
+    async loadTopMoversWidget() {
+      const el = document.getElementById('top-movers-container');
       if (!el) return;
       try {
-        const data = await fetchEarnings();
-        const items = (data.earningsCalendar || []).filter(e => e.symbol && e.date).slice(0, 10);
-        if (!items.length) {
-          el.innerHTML = `<div class="earnings-empty">No earnings scheduled this week.</div>`;
+        const cfg = getCfg();
+        const allInst = [...MARKET_INSTRUMENTS, ...TICKER_EXTRA];
+        const results = await Promise.allSettled(
+          allInst.map(inst => fetchFinnhub(inst.finnhub, cfg.finnhub).then(d => ({ ...d, inst })))
+        );
+        const quotes = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+        if (!quotes.length) {
+          el.innerHTML = `<div class="earnings-empty">Top movers unavailable.</div>`;
           return;
         }
-        el.innerHTML = `<div class="earnings-table-wrap"><table class="earnings-table">
-          <thead><tr><th>Symbol</th><th>Company</th><th>Date</th><th>EPS Est.</th><th>Revenue Est.</th></tr></thead>
-          <tbody>${items.map(e => `<tr>
-            <td><strong>${esc(e.symbol)}</strong></td>
-            <td>${esc((e.company || '').slice(0, 35))}</td>
-            <td>${esc(e.date)}</td>
-            <td>${e.epsEstimate != null ? fmtNum(e.epsEstimate, 2) : '–'}</td>
-            <td>${e.revenueEstimate ? '$' + fmtNum(e.revenueEstimate / 1_000_000, 0) + 'M' : '–'}</td>
-          </tr>`).join('')}</tbody>
-        </table></div>`;
+
+        const sorted  = [...quotes].sort((a, b) => b.changePct - a.changePct);
+        const gainers = sorted.slice(0, 3);
+        const losers  = sorted.slice(-3).reverse();
+
+        const renderMover = (q) => `<div class="mover-card ${q.changePct >= 0 ? 'mover-card--up' : 'mover-card--down'}">
+          <div class="mover-name">${esc(q.inst.label)}</div>
+          <div class="mover-val">$${fmtNum(q.price, 2)}</div>
+          <div class="mover-chg ${q.changePct >= 0 ? 'up' : 'down'}">${q.changePct >= 0 ? '▲' : '▼'} ${fmtPct(q.changePct)}</div>
+        </div>`;
+
+        el.innerHTML = `
+          <div class="movers-col">
+            <div class="movers-col-label">Top Gainers</div>
+            ${gainers.map(renderMover).join('')}
+          </div>
+          <div class="movers-col">
+            <div class="movers-col-label">Top Losers</div>
+            ${losers.map(renderMover).join('')}
+          </div>`;
       } catch (e) {
-        el.innerHTML = `<div class="earnings-empty">Earnings calendar unavailable: ${esc(e.message)}</div>`;
+        el.innerHTML = `<div class="earnings-empty">Top movers unavailable: ${esc(e.message)}</div>`;
       }
     },
 
@@ -1364,7 +1364,7 @@
           if (PAGE.page === 'bedrijven' || PAGE.page === 'companies') {
             const sym = document.getElementById('insider-symbol')?.value || 'AAPL';
             extras.push(loadInsiderWidget(sym));
-            extras.push(this.loadEarningsWidget());
+            extras.push(this.loadTopMoversWidget());
           }
         }
 
