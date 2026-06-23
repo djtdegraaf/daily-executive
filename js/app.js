@@ -713,7 +713,7 @@
     return `<div class="featured-stock">
       <div class="featured-stock-header">
         <div>
-          <div class="featured-stock-label">Aandeel van de dag</div>
+          <div class="featured-stock-label">Stock of the Day</div>
           <div class="featured-stock-name">${esc(stockData.name)}</div>
           <div class="featured-stock-exchange">${esc(stockData.exchange)}${note ? ` · ${note}` : ''}</div>
         </div>
@@ -1166,10 +1166,10 @@
 
       if (!IS_LIVE && !cfg.twelve) {
         el.innerHTML = `<div class="featured-stock">
-          <div class="featured-stock-label">Aandeel van de dag</div>
+          <div class="featured-stock-label">Stock of the Day</div>
           <div class="no-key-notice" style="margin-top:0.8rem;padding:0.8rem;text-align:center;border:1px dashed #3a3020;border-radius:3px;">
             <p style="font-family:'DM Sans',sans-serif;font-size:0.73rem;color:#6a6050;margin-bottom:0.5rem;line-height:1.5;">
-              Twelve Data API-sleutel vereist<br>voor koersgrafieken.
+              Twelve Data API key required<br>for price charts.
             </p>
             <button class="btn-setup" data-action="open-modal" style="font-size:0.68rem;padding:0.3rem 0.8rem;">Add key</button>
           </div>
@@ -1199,13 +1199,18 @@
       let bestFhKey    = '';
       let bestNote     = '';
       let bestPct      = -Infinity;
+      let bestAbsPct   = -Infinity;
       let bestLabel    = '';
 
-      if (cfg.finnhub) {
+      // Op live site is geen lokale Finnhub-key nodig (server-side proxy) —
+      // de cache is dan al gevuld door loadMarketData, dus de vergelijking
+      // moet ook zonder cfg.finnhub draaien.
+      if (IS_LIVE || cfg.finnhub) {
         for (const c of candidates) {
           const ck   = 'fh_' + c.fh.replace(/[^a-zA-Z0-9]/g, '_');
           const data = cacheGet(ck);
-          if (data && Math.abs(data.changePct) > Math.abs(bestPct)) {
+          if (data && Math.abs(data.changePct) > bestAbsPct) {
+            bestAbsPct   = Math.abs(data.changePct);
             bestPct      = data.changePct;
             bestSymbol   = c.twelve;
             bestExchange = '';
@@ -1234,11 +1239,11 @@
         el.innerHTML = renderFeaturedStock(tsData, fhQuote, reason, bestNote);
       } catch (e) {
         el.innerHTML = `<div class="featured-stock">
-          <div class="featured-stock-label">Aandeel van de dag</div>
+          <div class="featured-stock-label">Stock of the Day</div>
           <div class="error-card" style="margin-top:0.8rem;border-left-color:#5a4a3a;">
             <div class="error-card-title" style="color:#7a6050;">Chart unavailable</div>
             <div class="error-card-msg">${esc(e.message)}</div>
-            <button class="error-card-action" data-action="retry-stock">Opnieuw proberen</button>
+            <button class="error-card-action" data-action="retry-stock">Try again</button>
           </div>
         </div>`;
       }
