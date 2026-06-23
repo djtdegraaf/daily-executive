@@ -1145,18 +1145,75 @@
     }
 
     /* ── RESPONSIVE ───────────────────────────────────────── */
+    html { overflow-x: hidden; }
+    body { overflow-x: hidden; }
+
+    /* Tablets / iPad portrait */
     @media (max-width: 900px) {
-      .content-grid { grid-template-columns: 1fr; }
+      .content-grid { grid-template-columns: 1fr; gap: 2.4rem; padding: 2rem 0; }
       .footer-top { grid-template-columns: 1fr 1fr; }
+      .sidebar { flex-direction: row; flex-wrap: wrap; gap: 1.2rem; }
+      .sidebar > * { flex: 1 1 280px; }
     }
 
+    /* Phones (portrait & landscape) */
     @media (max-width: 600px) {
+      .container { padding: 0 1.1rem; }
+
+      .topbar { padding: 0 1.1rem; height: auto; min-height: 36px; flex-wrap: wrap; row-gap: 0.3rem; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+      .topbar-date { font-size: 0.66rem; }
       .topbar-links { display: none; }
-      .article-grid { grid-template-columns: 1fr; }
+      .topbar-right { font-size: 0.62rem; gap: 0.6rem; }
+
+      .site-header { padding: 1.8rem 1.1rem 1.2rem; }
+      .tagline { font-size: 0.68rem; letter-spacing: 0.12em; }
+      .edition-line { flex-wrap: wrap; font-size: 0.62rem; gap: 0.4rem; }
+      .next-update-bar { padding: 0.3rem 1.1rem; font-size: 0.6rem; }
+
       .primary-nav ul { flex-wrap: wrap; justify-content: flex-start; }
-      .primary-nav ul li a { padding: 0.75rem 1rem; font-size: 0.75rem; }
-      .footer-top { grid-template-columns: 1fr; }
-      .container { padding: 0 1rem; }
+      .primary-nav ul li a { padding: 0.7rem 0.85rem; font-size: 0.7rem; letter-spacing: 0.06em; }
+
+      .ticker-wrap { height: 34px; }
+      .ticker-label { font-size: 0.62rem; padding: 0 0.7rem; }
+      .ticker-item { font-size: 0.7rem; padding: 0 1rem; gap: 0.35rem; }
+      .ticker-chg { font-size: 0.65rem; }
+
+      .section-label { font-size: 0.62rem; letter-spacing: 0.14em; }
+
+      .lead-headline { font-size: clamp(1.5rem, 6vw, 2rem); line-height: 1.22; }
+      .lead-deck { font-size: 1rem; line-height: 1.55; }
+      .lead-body { font-size: 0.95rem; line-height: 1.65; }
+      .lead-body p:first-child::first-letter { font-size: 2.6em; }
+
+      .article-grid { grid-template-columns: 1fr; gap: 1.4rem; }
+      .card-headline { font-size: 1.05rem; }
+
+      .market-card, .featured-stock, .insider-card, .ptf-form-card { padding: 1.1rem 1.2rem; }
+
+      .ptf-form-row { grid-template-columns: 1fr; gap: 0.6rem; }
+      .ptf-form-submit { width: 100%; padding: 0.65rem 1.1rem; }
+
+      .ptf-table th, .ptf-table td,
+      .earnings-table th, .earnings-table td { padding: 0.55rem 0.7rem; font-size: 0.76rem; }
+
+      .mkt-grid { grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+
+      .modal { padding: 1.5rem; max-height: 90vh; overflow-y: auto; }
+      .modal-title { font-size: 1.2rem; }
+
+      .footer-top { grid-template-columns: 1fr; gap: 1.8rem; }
+      .footer-bottom { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+      .data-disclaimer { padding: 0.8rem 1.1rem; font-size: 0.6rem; }
+    }
+
+    /* Small phones (iPhone SE / narrow Android) */
+    @media (max-width: 400px) {
+      .logo { font-size: 2rem; }
+      .lead-headline { font-size: 1.4rem; }
+      .primary-nav ul li a { padding: 0.65rem 0.6rem; font-size: 0.66rem; }
+      .mkt-grid { grid-template-columns: 1fr; }
+      .sidebar { flex-direction: column; }
+      .sidebar > * { flex: 1 1 auto; }
     }
 
     /* ── INSIDER TRANSACTIONS ─────────────────────────────── */
