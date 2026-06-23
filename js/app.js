@@ -1053,13 +1053,13 @@
         .filter(r => r.status === 'fulfilled')
         .flatMap(r => r.value);
 
-      // Optionele keyword-filter per pagina — keywords zijn Engelstalig, dus alleen
-      // toepassen op Engelse artikelen. NL-artikelen (NOS/FD) zijn al economisch/zakelijk
-      // van aard en worden altijd doorgelaten.
+      // Optionele keyword-filter per pagina. Geldt voor alle talen — elke pagina's
+      // filterKeywords-lijst bevat zowel Engelse als Nederlandse termen, zodat
+      // NOS/FD-artikelen ook echt op onderwerp worden gefilterd in plaats van
+      // altijd door te komen.
       if (PAGE.filterKeywords && PAGE.filterKeywords.length > 0) {
         const kws = PAGE.filterKeywords;
         articles = articles.filter(a => {
-          if (a.lang === 'nl') return true;
           const text = (a.title + ' ' + a.desc).toLowerCase();
           return kws.some(k => text.includes(k));
         });
