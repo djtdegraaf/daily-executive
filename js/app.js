@@ -1424,68 +1424,111 @@
 
         const now = new Date();
 
-        // Build list of months from Jan 2026 to current month
+        // Persistent tracking (via the deals-worker Cron Trigger + KV) began
+        // July 2026. Months before that are intentionally not offered — RSS
+        // feeds no longer expose that history, so we never fabricate it.
+        const TRACKING_START = { year: 2026, month: 6 };
+
         const months = [];
-        const startYear = 2026, startMonth = 0; // Jan 2026
-        for (let y = startYear; y <= now.getFullYear(); y++) {
-          const mStart = (y === startYear) ? startMonth : 0;
+        for (let y = TRACKING_START.year; y <= now.getFullYear(); y++) {
+          const mStart = (y === TRACKING_START.year) ? TRACKING_START.month : 0;
           const mEnd   = (y === now.getFullYear()) ? now.getMonth() : 11;
           for (let m = mStart; m <= mEnd; m++) months.push({ year: y, month: m });
         }
 
-        // All candidate deals from the feeds (any date)
-        const allDeals = articles
+        // Live-detected deals from the feeds fetched just now (covers only
+        // the last ~30-60 days a feed exposes — mainly useful for the
+        // current month, ahead of that day's persisted snapshot).
+        const liveDeals = articles
           .map(a => ({ article: a, date: a.pubDate ? new Date(a.pubDate) : null, dealVal: extractDealValue(a) }))
           .filter(d => d.dealVal && d.date && !isNaN(d.date));
 
-        // Helper: filter deals for a given {year, month}
-        const dealsForMonth = ({ year, month }) => {
+        const liveDealsForMonth = ({ year, month }) => {
           const start = new Date(year, month, 1);
           const end   = new Date(year, month + 1, 1);
-          return allDeals.filter(d => d.date >= start && d.date < end);
+          return liveDeals.filter(d => d.date >= start && d.date < end);
         };
 
-        // Determine which month to show: current month, or fall back to last month with data
-        let selected = months[months.length - 1];
-        if (!dealsForMonth(selected).length) {
-          for (let i = months.length - 2; i >= 0; i--) {
-            if (dealsForMonth(months[i]).length) { selected = months[i]; break; }
-          }
-        }
+        const monthKeyStr = ({ year, month }) => `${year}-${String(month + 1).padStart(2, '0')}`;
+        const historyCache = new Map();
 
-        const renderTable = (sel) => {
+        // Fetches persisted history for a month (from the KV-backed API),
+        // merges with any live-detected deals for the same month, dedupes
+        // by link, sorted newest first.
+        const getDealsForMonth = async (sel) => {
+          const key = monthKeyStr(sel);
+          let persisted = [];
+          if (IS_LIVE) {
+            if (historyCache.has(key)) {
+              persisted = historyCache.get(key);
+            } else {
+              try {
+                const res = await fetch(`/api/deals-history?month=${key}`);
+                if (res.ok) {
+                  const data = await res.json();
+                  persisted = (data.deals || []).map(d => ({
+                    date: new Date(d.date), title: d.title, link: d.link,
+                    source: d.source, dealVal: d.value,
+                  }));
+                }
+              } catch { /* history unavailable — fall back to live-only */ }
+              historyCache.set(key, persisted);
+            }
+          }
+
+          const live = liveDealsForMonth(sel).map(d => ({
+            date: d.date, title: d.article.title, link: d.article.link,
+            source: d.article.source, dealVal: d.dealVal,
+          }));
+
+          const seen = new Set();
+          const merged = [];
+          for (const d of [...persisted, ...live]) {
+            if (!d.link || seen.has(d.link)) continue;
+            seen.add(d.link);
+            merged.push(d);
+          }
+          merged.sort((a, b) => b.date - a.date);
+          return merged;
+        };
+
+        const selected = months[months.length - 1]; // current month, always
+
+        const renderTable = async (sel) => {
           const monthName = new Date(sel.year, sel.month, 1)
             .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-          const deals = dealsForMonth(sel).sort((a, b) => b.date - a.date);
+          const deals = await getDealsForMonth(sel);
 
           const selectHTML = `<div class="deals-month-bar">
             <span class="deals-month-label">Period</span>
-            <select class="deals-month-select" id="deals-month-select">
-              ${months.slice().reverse().map(m => {
-                const label = new Date(m.year, m.month, 1)
-                  .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                const val   = `${m.year}-${m.month}`;
-                const selAttr = (m.year === sel.year && m.month === sel.month) ? ' selected' : '';
-                return `<option value="${val}"${selAttr}>${label}</option>`;
-              }).join('')}
-            </select>
-            ${deals.length ? `<span class="deals-month-count">${deals.length} deal${deals.length !== 1 ? 's' : ''} found</span>` : ''}
+            <span class="deals-month-select-wrap">
+              <select class="deals-month-select" id="deals-month-select">
+                ${months.slice().reverse().map(m => {
+                  const label = new Date(m.year, m.month, 1)
+                    .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                  const val   = `${m.year}-${m.month}`;
+                  const selAttr = (m.year === sel.year && m.month === sel.month) ? ' selected' : '';
+                  return `<option value="${val}"${selAttr}>${label}</option>`;
+                }).join('')}
+              </select>
+            </span>
+            ${deals.length ? `<span class="deals-month-count"><strong>${deals.length}</strong> deal${deals.length !== 1 ? 's' : ''} found</span>` : ''}
           </div>`;
 
           if (!deals.length) {
             const errMsg = feedErrors.length ? feedErrors.slice(0, 3).join(' · ') : '';
             el.innerHTML = selectHTML + `<div class="earnings-empty">
-              No deals with a disclosed value found in ${esc(monthName)} in the monitored feeds.
+              No deals with a disclosed value found in ${esc(monthName)}.
               ${errMsg ? `<br><span style="font-size:0.7rem">${esc(errMsg)}</span>` : ''}
             </div>`;
           } else {
-            const rows = deals.slice(0, 50).map(({ article: a, date, dealVal }) => {
+            const rows = deals.slice(0, 50).map(({ title, link, source, date, dealVal }) => {
               const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
               return `<tr>
                 <td class="deals-date">${esc(dateStr)}</td>
                 <td class="deals-headline">
-                  <a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.title)}</a>
-                  <span class="deals-source">${esc(a.source)}</span>
+                  <a href="${esc(link)}" target="_blank" rel="noopener">${esc(title)}</a>
+                  <span class="deals-source">${esc(source)}</span>
                 </td>
                 <td class="deals-value"><span class="deal-badge">${esc(dealVal)}</span></td>
               </tr>`;
@@ -1496,7 +1539,7 @@
             </table></div>`;
           }
 
-          // Wire up dropdown — re-render without re-fetching feeds
+          // Wire up dropdown — re-render, reusing the history cache
           const selectEl = document.getElementById('deals-month-select');
           if (selectEl) {
             selectEl.addEventListener('change', () => {
@@ -1506,7 +1549,7 @@
           }
         };
 
-        renderTable(selected);
+        await renderTable(selected);
       } catch (e) {
         const el2 = document.getElementById('deals-table-container');
         if (el2) el2.innerHTML = `<div class="earnings-empty">Deals unavailable: ${esc(e.message)}</div>`;

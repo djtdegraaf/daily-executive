@@ -1,0 +1,12 @@
+name = "daily-executive-deals-worker"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# Runs once a day at 05:00 UTC — detects new M&A deals from RSS feeds
+# and appends them to persistent KV storage, keyed by month.
+[triggers]
+crons = ["0 5 * * *"]
+
+[[kv_namespaces]]
+binding = "DEALS_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
