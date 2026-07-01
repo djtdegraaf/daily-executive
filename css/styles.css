@@ -411,31 +411,35 @@
       height: 100%;
       display: flex;
       align-items: center;
-      /* Voorkomt render-flicker op iOS/Android */
-      -webkit-overflow-scrolling: touch;
+      contain: layout style;
     }
 
     .ticker-track {
       display: flex;
       white-space: nowrap;
-      animation: scroll-ticker 50s linear infinite;
-      /* Hardware-accelerated animatie op mobiel */
-      will-change: transform;
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
+      -webkit-animation: scroll-ticker 50s linear infinite;
+              animation: scroll-ticker 50s linear infinite;
     }
 
-    .ticker-track.paused { animation-play-state: paused; }
+    .ticker-track.paused {
+      -webkit-animation-play-state: paused;
+              animation-play-state: paused;
+    }
     /* Hover alleen op devices met pointer (niet mobiel) */
     @media (hover: hover) {
-      .ticker-track:hover { animation-play-state: paused; }
+      .ticker-track:hover {
+        -webkit-animation-play-state: paused;
+                animation-play-state: paused;
+      }
     }
 
+    @-webkit-keyframes scroll-ticker {
+      from { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); }
+      to   { -webkit-transform: translate3d(-50%, 0, 0); transform: translate3d(-50%, 0, 0); }
+    }
     @keyframes scroll-ticker {
-      from { transform: translateX(0) translateZ(0); }
-      to   { transform: translateX(-50%) translateZ(0); }
+      from { transform: translate3d(0, 0, 0); }
+      to   { transform: translate3d(-50%, 0, 0); }
     }
 
     .ticker-item {
