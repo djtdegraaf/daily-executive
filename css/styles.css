@@ -1703,6 +1703,56 @@
     }
 
     /* ── DEALS TABLE (Deals & M&A-pagina) ─────────────────── */
+    /* ── DEALS MONTH SELECTOR ───────────────────────────── */
+    .deals-month-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .deals-month-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.63rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .deals-month-select {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--cream);
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      padding: 0.35rem 0.8rem 0.35rem 0.6rem;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238B6914'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      padding-right: 1.8rem;
+      transition: border-color 0.15s;
+    }
+
+    .deals-month-select:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .deals-month-count {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
     .deals-table-wrap {
       overflow-x: auto;
       border: 1px solid var(--rule);

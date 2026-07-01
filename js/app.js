@@ -1420,46 +1420,96 @@
       const el = document.getElementById('deals-table-container');
       if (!el) return;
       try {
-        const { articles, feedErrors, feedCount } = await gatherArticles();
+        const { articles, feedErrors } = await gatherArticles();
 
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthName  = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
-        const deals = articles
-          .map(a => ({ article: a, date: a.pubDate ? new Date(a.pubDate) : null, dealVal: extractDealValue(a) }))
-          .filter(d => d.dealVal && d.date && !isNaN(d.date) && d.date >= monthStart && d.date <= now);
-
-        if (!deals.length) {
-          const errMsg = feedErrors.length ? feedErrors.slice(0, 3).join(' · ') : '';
-          el.innerHTML = `<div class="earnings-empty">
-            Geen deals met een bekend bedrag gevonden in ${esc(monthName)} in de gemonitorde feeds.
-            ${errMsg ? `<br><span style="font-size:0.7rem">${esc(errMsg)}</span>` : ''}
-          </div>`;
-          return;
+        // Build list of months from Jan 2026 to current month
+        const months = [];
+        const startYear = 2026, startMonth = 0; // Jan 2026
+        for (let y = startYear; y <= now.getFullYear(); y++) {
+          const mStart = (y === startYear) ? startMonth : 0;
+          const mEnd   = (y === now.getFullYear()) ? now.getMonth() : 11;
+          for (let m = mStart; m <= mEnd; m++) months.push({ year: y, month: m });
         }
 
-        // Chronologisch: nieuwste deal boven aan
-        deals.sort((a, b) => b.date - a.date);
+        // All candidate deals from the feeds (any date)
+        const allDeals = articles
+          .map(a => ({ article: a, date: a.pubDate ? new Date(a.pubDate) : null, dealVal: extractDealValue(a) }))
+          .filter(d => d.dealVal && d.date && !isNaN(d.date));
 
-        const rows = deals.slice(0, 25).map(({ article: a, date, dealVal }) => {
-          const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-          return `<tr>
-            <td class="deals-date">${esc(dateStr)}</td>
-            <td class="deals-headline">
-              <a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.title)}</a>
-              <span class="deals-source">${esc(a.source)}</span>
-            </td>
-            <td class="deals-value"><span class="deal-badge">${esc(dealVal)}</span></td>
-          </tr>`;
-        }).join('');
+        // Helper: filter deals for a given {year, month}
+        const dealsForMonth = ({ year, month }) => {
+          const start = new Date(year, month, 1);
+          const end   = new Date(year, month + 1, 1);
+          return allDeals.filter(d => d.date >= start && d.date < end);
+        };
 
-        el.innerHTML = `<div class="deals-table-wrap"><table class="deals-table">
-          <thead><tr><th>Date</th><th>Deal</th><th>Value</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>`;
+        // Determine which month to show: current month, or fall back to last month with data
+        let selected = months[months.length - 1];
+        if (!dealsForMonth(selected).length) {
+          for (let i = months.length - 2; i >= 0; i--) {
+            if (dealsForMonth(months[i]).length) { selected = months[i]; break; }
+          }
+        }
+
+        const renderTable = (sel) => {
+          const monthName = new Date(sel.year, sel.month, 1)
+            .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+          const deals = dealsForMonth(sel).sort((a, b) => b.date - a.date);
+
+          const selectHTML = `<div class="deals-month-bar">
+            <span class="deals-month-label">Period</span>
+            <select class="deals-month-select" id="deals-month-select">
+              ${months.slice().reverse().map(m => {
+                const label = new Date(m.year, m.month, 1)
+                  .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                const val   = `${m.year}-${m.month}`;
+                const selAttr = (m.year === sel.year && m.month === sel.month) ? ' selected' : '';
+                return `<option value="${val}"${selAttr}>${label}</option>`;
+              }).join('')}
+            </select>
+            ${deals.length ? `<span class="deals-month-count">${deals.length} deal${deals.length !== 1 ? 's' : ''} found</span>` : ''}
+          </div>`;
+
+          if (!deals.length) {
+            const errMsg = feedErrors.length ? feedErrors.slice(0, 3).join(' · ') : '';
+            el.innerHTML = selectHTML + `<div class="earnings-empty">
+              No deals with a disclosed value found in ${esc(monthName)} in the monitored feeds.
+              ${errMsg ? `<br><span style="font-size:0.7rem">${esc(errMsg)}</span>` : ''}
+            </div>`;
+          } else {
+            const rows = deals.slice(0, 50).map(({ article: a, date, dealVal }) => {
+              const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+              return `<tr>
+                <td class="deals-date">${esc(dateStr)}</td>
+                <td class="deals-headline">
+                  <a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+                  <span class="deals-source">${esc(a.source)}</span>
+                </td>
+                <td class="deals-value"><span class="deal-badge">${esc(dealVal)}</span></td>
+              </tr>`;
+            }).join('');
+            el.innerHTML = selectHTML + `<div class="deals-table-wrap"><table class="deals-table">
+              <thead><tr><th>Date</th><th>Deal</th><th>Value</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table></div>`;
+          }
+
+          // Wire up dropdown — re-render without re-fetching feeds
+          const selectEl = document.getElementById('deals-month-select');
+          if (selectEl) {
+            selectEl.addEventListener('change', () => {
+              const [y, m] = selectEl.value.split('-').map(Number);
+              renderTable({ year: y, month: m });
+            });
+          }
+        };
+
+        renderTable(selected);
       } catch (e) {
-        el.innerHTML = `<div class="earnings-empty">Deals unavailable: ${esc(e.message)}</div>`;
+        const el2 = document.getElementById('deals-table-container');
+        if (el2) el2.innerHTML = `<div class="earnings-empty">Deals unavailable: ${esc(e.message)}</div>`;
       }
     },
 
